@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator de Nomes Científicos (Tabela Completa)</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+        body { background: #eef3e9; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 1400px; width: 100%; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(30,60,30,0.15); padding: 25px; }
+        h1 { color: #1d4d1d; font-weight: 500; border-left: 10px solid #2e7d32; padding-left: 20px; margin-top: 0; }
+        .flex-row { display: flex; gap: 25px; flex-wrap: wrap; }
+        .input-panel { flex: 1; min-width: 350px; }
+        .output-panel { flex: 2; min-width: 600px; }
+        textarea { width: 100%; height: 250px; padding: 18px; border: 2px solid #bcdab0; border-radius: 20px; font-size: 1rem; resize: vertical; background: #fafdf8; }
+        button { background: #1d4d1d; color: white; border: none; padding: 12px 28px; border-radius: 40px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: 0.2s; margin: 10px 5px 10px 0; box-shadow: 0 4px 8px rgba(0,40,0,0.2); }
+        button:hover { background: #0b360b; transform: scale(1.02); }
+        button.secondary { background: #3a6b3a; }
+        .counter { background: #e2f0da; padding: 8px 18px; border-radius: 40px; display: inline-block; margin-left: 10px; font-weight: 600; }
+        .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #cde2c0; border-radius: 16px; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: #2e7d32; color: white; font-weight: 600; padding: 14px 8px; position: sticky; top: 0; white-space: nowrap; }
+        td { padding: 10px 8px; border-bottom: 1px solid #cde2c0; }
+        tr:nth-child(even) { background: #f6fbf3; }
+        tr:hover { background: #e2f0da; }
+        .warning { background: #fff3cd; border-left: 6px solid #ffc107; padding: 12px; border-radius: 12px; margin: 15px 0; }
+        .small-note { color: #4b6a4b; font-size: 0.9rem; margin-top: 5px; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🌿 Extrator para Tabela Taxonômica (plantas/árvores)</h1>
+    <div class="flex-row">
+        <!-- Painel de entrada -->
+        <div class="input-panel">
+            <label><strong>📄 Cole qualquer texto (relatório, lista, artigo):</strong></label>
+            <textarea id="inputText" placeholder="Ex: 'Foram amostradas: Handroanthus impetiginosus, Cecropia pachystachya var. glabrata, Eucalyptus tereticornis, Myrcia cf. splendens, além de Pinus elliottii e Schinus terebinthifolia.'"></textarea>
+            <div class="btn-group">
+                <button id="extractBtn"><span>🔍</span> Extrair Nomes Científicos</button>
+                <button id="copyTableBtn" class="secondary">📋 Copiar Tabela (TSV)</button>
+                <span class="counter" id="rowCount">0 linhas</span>
+            </div>
+            <div id="warningMessage" class="warning" style="display: none;"></div>
+            <div class="small-note">
+                ✅ Reconhece: gênero + epíteto, qualificadores (cf., aff., ?), infra (var., subsp., f.), "sp.".<br>
+                🔍 Usa lista de +200 gêneros de árvores para validar. A tabela pode ser copiada para Excel.
+            </div>
+        </div>
+        <!-- Painel de saída (tabela) -->
+        <div class="output-panel">
+            <div class="table-wrapper" id="tableWrapper">
+                <table id="resultTable">
+                    <thead>
+                        <tr>
+                            <th>genus</th>
+                            <th>specificEpithet</th>
+                            <th>infraspecificEpithet</th>
+                            <th>identificationQualifier</th>
+                            <th>scientificName</th>
+                            <th>vernacularName</th>
+                            <th>taxonRank</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="7" style="text-align:center; padding:40px; color:#7a9f7a;">Nenhum dado extraído ainda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ------------------------------------------------------------
+    // Lista de gêneros de árvores/plantas (mais de 200 – amostra representativa)
+    // ------------------------------------------------------------
+    const genusList = [
+        "Acacia","Acalypha","Acer","Achillea","Acmella","Acrocomia","Actinostemon","Adiantum","Aegiphila","Aeschynomene",
+        "Agave","Alchornea","Allagoptera","Aloe","Aloysia","Alpinia","Alternanthera","Amaranthus","Ambrosia","Amburana",
+        "Anacardium","Anadenanthera","Ananas","Andira","Annona","Anthurium","Apuleia","Araucaria","Archontophoenix","Ardisia",
+        "Aristolochia","Artemisia","Artocarpus","Asclepias","Aspidosperma","Aster","Astrocaryum","Attalea","Averrhoa","Axonopus",
+        "Baccharis","Bactris","Banisteriopsis","Bauhinia","Begonia","Bertholletia","Bidens","Bixa","Blechnum","Borreria",
+        "Bowdichia","Brosimum","Brugmansia","Brunfelsia","Bryophyllum","Butia","Buxus","Byrsonima","Caesalpinia","Cajanus",
+        "Calathea","Calliandra","Calophyllum","Calyptranthes","Campomanesia","Canavalia","Canna","Capsicum","Carapa","Carica",
+        "Cariniana","Cassia","Casuarina","Cecropia","Cedrela","Celtis","Cenchrus","Centrosema","Cephaelis","Ceratonia",
+        "Cestrum","Chaetocalyx","Chamaecrista","Chamaedorea","Chenopodium","Chrysophyllum","Cichorium","Cinnamomum","Cissampelos","Cissus",
+        "Citrus","Clidemia","Clitoria","Clusia","Coccoloba","Cocos","Coffea","Colocasia","Combretum","Commelina",
+        "Conocarpus","Conyza","Copernicia","Cordia","Coriandrum","Costus","Couroupita","Coussapoa","Cratylia","Crotalaria",
+        "Croton","Cupania","Cupressus","Cuscuta","Cynodon","Cyperus","Dalbergia","Datura","Davilla","Delonix",
+        "Desmodium","Dichanthelium","Dichondra","Didymopanax","Digitaria","Dioscorea","Diospyros","Dipteryx","Dodonaea","Drimys",
+        "Drymaria","Duranta","Dyckia","Echinochloa","Echinodorus","Elaeis","Eleocharis","Eleusine","Elytrigia","Emilia",
+        "Enterolobium","Epidendrum","Equisetum","Eragrostis","Erechtites","Eremocaulon","Eriobotrya","Eriocaulon","Eryngium","Erythrina",
+        "Erythroxylum","Eucalyptus","Eugenia","Euploca","Eupatorium","Euphorbia","Euterpe","Fevillea","Ficus","Fimbristylis",
+        "Foeniculum","Fragaria","Furcraea","Gaillardia","Galactia","Galinsoga","Garcinia","Gardenia","Geonoma","Gliricidia",
+        "Gomphrena","Gossypium","Gouania","Gracilea","Guadua","Guapira","Guarea","Guazuma","Gurania","Gymnanthes",
+        "Gymnopogon","Habenaria","Handroanthus","Harpalyce","Hedychium","Hedysomum","Heimia","Helianthus","Heliconia","Heliotropium",
+        "Hemerocallis","Heteropterys","Hibiscus","Hieronyma","Himatanthus","Hirtella","Hydrocotyle","Hymenaea","Hyparrhenia","Hypericum",
+        "Hypoxis","Hyptis","Ilex","Impatiens","Imperata","Indigofera","Inga","Ipomoea","Iresine","Iriartea",
+        "Iribachia","Iris","Jacaranda","Jacaratia","Jatropha","Juncus","Juniperus","Justicia","Kalanchoe","Kielmeyera",
+        "Kyllinga","Lactuca","Lafoensia","Laguncularia","Landolphia","Lantana","Laportea","Lathyrus","Leandra","Lecythis",
+        "Lemaireocereus","Lepidium","Leptochloa","Licania","Lippia","Liquidambar","Liriodendron","Litchi","Lithraea","Lobelia",
+        "Lolium","Lonicera","Luffa","Lupinus","Luziola","Lychnophora","Lycopersicon","Lygodium","Macfadyena","Maclura",
+        "Macroptilium","Magnolia","Malachra","Malaxis","Mammea","Mangifera","Manihot","Manilkara","Mansoa","Maranta",
+        "Marcgravia","Mascagnia","Matayba","Matricaria","Mauritia","Maximiliana","Maytenus","Medicago","Melaleuca","Melastoma",
+        "Melia","Melinis","Melissa","Mentha","Mentzelia","Miconia","Microtea","Mikania","Mimosa","Mirabilis",
+        "Momordica","Monotagma","Montrichardia","Morus","Mouriri","Mucuna","Muhlenbergia","Muntingia","Murraya","Musa",
+        "Myrcia","Myrciaria","Myriophyllum","Myrocarpus","Myroxylon","Nectandra","Nelumbo","Neomarica","Nephelium","Nephrolepis",
+        "Nerium","Nesaea","Nicotiana","Nierembergia","Nopalea","Norantea","Nymphaea","Ocimum","Ocotea","Oenocarpus",
+        "Oenothera","Oldenlandia","Olmedia","Olyra","Operculina","Opuntia","Orbignya","Origanum","Ormosia","Oryza",
+        "Osmorhiza","Ouratea","Oxalis","Pachira","Pachystroma","Paepalanthus","Paliocurea","Panicum","Papaver","Parapiptadenia",
+        "Parietaria","Parkinsonia","Paspalum","Passiflora","Paullinia","Pavonia","Pectis","Peltogyne","Pennisetum","Peperomia",
+        "Pereskia","Persea","Petiveria","Petrea","Petunia","Phaseolus","Philodendron","Phlebodium","Phoradendron","Phragmites",
+        "Phyllanthus","Physalis","Phytolacca","Picramnia","Picrosia","Pilea","Pilocarpus","Pimenta","Pinus","Piper",
+        "Piptadenia","Piptocarpha","Pisonia","Pistia","Pithecellobium","Pityrogramma","Plagiogyria","Plantago","Platymiscium","Platypodium",
+        "Plectranthus","Plinia","Pluchea","Plumbago","Plumeria","Poa","Podocarpus","Polygala","Polygonum","Polymnia",
+        "Polypodium","Polystachya","Pomaderris","Poncirus","Pontederia","Populus","Porophyllum","Portulaca","Posoqueria","Potamogeton",
+        "Pouteria","Pradosia","Pratia","Prosopis","Prunus","Pseudobombax","Pseudolmedia","Psidium","Psittacanthus","Psychotria",
+        "Pteridium","Pteris","Pterocarpus","Pterodon","Ptychosperma","Punica","Pyrostegia","Pyrus","Qualea","Quercus",
+        "Racinaea","Randia","Ranunculus","Rapanea","Rauvolfia","Renealmia","Rhamnus","Rhinchorynchus","Rhizophora","Rhododendron",
+        "Rhoeo","Rhus","Rhynchanthera","Rhynchosia","Rhynchospora","Ribes","Richardia","Ricinus","Rivina","Rosa",
+        "Roystonea","Rubus","Rudgea","Rumex","Ruppia","Ruta","Sabal","Sabicea","Saccharum","Sagittaria",
+        "Salix","Salvia","Salvinia","Sambucus","Samolus","Sapindus","Sapium","Sarcostemma","Satureja","Sauravia",
+        "Saururus","Saxicola","Scabiosa","Scaevola","Schinopsis","Schinus","Schizachyrium","Schizolobium","Schwenckia","Scleria",
+        "Scolopia","Scoparia","Scutellaria","Sebastiania","Securidaca","Sedum","Selaginella","Selenicereus","Senna","Serjania",
+        "Sesamum","Sesbania","Sesuvium","Setaria","Sicana","Sida","Sideroxylon","Silene","Silybum","Simarouba",
+        "Sinningia","Siphocampylus","Sisymbrium","Sisyrinchium","Solanum","Solidago","Sonchus","Sopubia","Sorghum","Sparattosperma",
+        "Spartina","Spartium","Spermacoce","Sphaeropteris","Sphenoclea","Spigelia","Spiranthes","Spirodela","Spondias","Sporobolus",
+        "Stachytarpheta","Staelia","Stapelia","Stellaria","Stenandrium","Stenotaphrum","Stevia","Sticherus","Stigmaphyllon","Stillingia",
+        "Stipa","Strychnos","Stryphnodendron","Stylosanthes","Styrax","Swartzia","Swietenia","Syagrus","Symphonia","Symphyopappus",
+        "Symplocos","Synedrella","Syngonium","Synsepalum","Tabebuia","Tabernaemontana","Tachigali","Tagetes","Talauma","Talipariti",
+        "Talisia","Talium","Tamarix","Tanaecium","Tanacetum","Tapirira","Taraxacum","Tectona","Tephrosia","Terminalia",
+        "Tessaria","Tetracera","Tetragastris","Tetrapterys","Teucrium","Thalia","Thelypteris","Theobroma","Thevetia","Thunbergia",
+        "Thymus","Ti","Tibouchina","Tigridia","Tillandsia","Tipuana","Tithonia","Tournefortia","Tradescantia","Tragia",
+        "Tragus","Trebouxia","Trema","Trichilia","Trichocline","Trichomanes","Trichopilia","Tridax","Trifolium","Trigonia",
+        "Triplaris","Tripogandra","Trisetum","Triticum","Triumfetta","Turnera","Tussilago","Typha","Ugni","Ulmus",
+        "Uncaria","Urena","Urochloa","Ursinia","Utricularia","Vaccinium","Valeriana","Vanilla","Vantanea","Varronia",
+        "Vatairea","Vataireopsis","Verbena","Verbesina","Vernicia","Vernonia","Veronica","Viburnum","Vicia","Victoria",
+        "Vigna","Viguiera","Vinca","Viola","Vismia","Vitex","Vitis","Vittaria","Volkameria","Vriesea",
+        "Warszewiczia","Wedelia","Weinmannia","Welfia","Wigandia","Wissadula","Wolffia","Woodwardia","Xanthium","Xanthosoma",
+        "Xylopia","Xyris","Youngia","Yucca","Zantedeschia","Zanthoxylum","Zea","Zebrina","Zephyranthes","Zingiber",
+        "Zinnia","Ziziphus","Zornia","Zoysia","Zygia","Zygophyllum","Aegiphila integrifolia"
+,"Alchornea glandulosa"
+,"Alchornea triplinervia"
+,"Allophylus edulis"
+,"Annona glabra"
+,"Archontophoenix sp."
+,"Calyptranthes sp."
+,"Cecropia glaziovii"
+,"Citrus sp."
+,"Cupania oblongifolia"
+,"Daphnopsis fasciculata"
+,"Eriobotrya japonica"
+,"Eugenia florida"
+,"Euterpe edulis"
+,"Genipa americana"
+,"Guapira opposita"
+,"Hovenia dulcis"
+,"Hyeronima alchorneoides"
+,"Inga marginata"
+,"Inga sessilis"
+,"Miconia cinnamomifolia"
+,"Miconia formosa"
+,"Mimosa bimucronata"
+,"Myrsine coriacea"
+,"Myrsine umbellata"
+,"Nectandra lanceolata"
+,"Nectandra oppositifolia"
+,"Ocotea pulchella"
+,"Pera glabrata"
+,"Pinus sp."
+,"Pleroma raddianum"
+,"Psidium cattleianum"
+,"Psidium guajava"
+,"Schinus terebinthifolia"
+,"Syagrus romanzoffiana"
+    ];
+    const genusSet = new Set(genusList);
+
+    // ------------------------------------------------------------
+    // Elementos DOM
+    // ------------------------------------------------------------
+    const inputText = document.getElementById('inputText');
+    const extractBtn = document.getElementById('extractBtn');
+    const copyTableBtn = document.getElementById('copyTableBtn');
+    const tableBody = document.getElementById('tableBody');
+    const rowCountSpan = document.getElementById('rowCount');
+    const warningDiv = document.getElementById('warningMessage');
+
+    // Armazenar os dados atuais (array de objetos)
+    let currentRows = [];
+
+    // ------------------------------------------------------------
+    // Função de aviso
+    // ------------------------------------------------------------
+    function showWarning(msg, isError = false) {
+        warningDiv.innerText = msg;
+        warningDiv.style.display = 'block';
+        if (isError) warningDiv.style.background = '#f8d7da';
+        else warningDiv.style.background = '#fff3cd';
+        setTimeout(() => { warningDiv.style.display = 'none'; }, 4000);
+    }
+
+    // ------------------------------------------------------------
+    // Parsing de um nome científico completo
+    // ------------------------------------------------------------
+    function parseScientificName(rawName) {
+        // Limpa espaços extras
+        let name = rawName.trim().replace(/\s+/g, ' ');
+        // Inicializa resultado
+        let result = {
+            genus: '',
+            specificEpithet: '',
+            infraspecificEpithet: '',
+            identificationQualifier: '',
+            scientificName: '',
+            vernacularName: '',
+            taxonRank: 'outro'
+        };
+
+        // Palavras
+        let words = name.split(' ');
+        if (words.length === 0) return result;
+
+        // Gênero: primeira palavra com inicial maiúscula (ou toda maiúscula em alguns casos)
+        let firstWord = words[0];
+        // Se a primeira palavra tiver letra minúscula no início, não parece nome científico
+        if (!/^[A-ZÀ-Ú][a-zà-ú]*$/.test(firstWord) && !/^[A-ZÀ-Ú]+$/.test(firstWord)) {
+            // Pode ser algo como "sp."? não, ignoramos
+            return result;
+        }
+        result.genus = firstWord;
+
+        // Verifica se é apenas gênero (ex: "Pinus" sozinho, ou "Pinus sp.")
+        if (words.length === 1) {
+            result.scientificName = result.genus;
+            result.taxonRank = 'gênero';
+            return result;
+        }
+
+        // Pega o restante
+        let remaining = words.slice(1);
+        let qualifier = '';
+        let specific = '';
+        let infra = '';
+
+        // Detecta qualificadores comuns no início do restante: cf., aff., ?, etc.
+        if (remaining.length > 0 && /^(cf\.|aff\.|\?)$/i.test(remaining[0])) {
+            qualifier = remaining[0];
+            remaining = remaining.slice(1);
+        }
+
+        // Agora, o próximo deve ser o epíteto específico (se existir)
+        if (remaining.length > 0) {
+            // Pode ser "sp.", "spp." que indicam gênero não identificado
+            if (/^sp(p)?\.$/i.test(remaining[0])) {
+                specific = remaining[0];
+                // Se só sobrou isso, é gênero com indicação de espécie
+                result.scientificName = result.genus + ' ' + specific;
+                result.taxonRank = 'gênero';
+                result.identificationQualifier = qualifier;
+                return result;
+            }
+            // Epíteto específico normal (minúsculo, pode ter hífen)
+            if (/^[a-zà-ú]+[a-zà-ú\-]*\.?$/.test(remaining[0])) {
+                specific = remaining[0];
+                remaining = remaining.slice(1);
+            }
+        }
+
+        // Depois do epíteto específico, pode haver infra (var., subsp., f., etc.) e mais um epíteto
+        if (remaining.length >= 2) {
+            if (/^(var\.|subsp\.|f\.|convar\.)$/i.test(remaining[0])) {
+                let infraType = remaining[0];
+                let infraValue = remaining[1];
+                if (/^[a-zà-ú]+[a-zà-ú\-]*$/.test(infraValue)) {
+                    infra = infraType + ' ' + infraValue;
+                    remaining = remaining.slice(2);
+                }
+            }
+        }
+
+        // Se ainda sobrou algo, junta no infra? Mas normalmente não.
+
+        // Monta scientificName
+        let parts = [result.genus];
+        if (qualifier) parts.push(qualifier);
+        if (specific) parts.push(specific);
+        if (infra) parts.push(infra);
+        result.scientificName = parts.join(' ');
+        result.identificationQualifier = qualifier;
+        result.specificEpithet = specific || '';
+        result.infraspecificEpithet = infra || '';
+
+        // Determina rank
+        if (infra) result.taxonRank = 'infraespécie';
+        else if (specific && specific !== 'sp.' && specific !== 'spp.') result.taxonRank = 'espécie';
+        else if (result.genus) result.taxonRank = 'gênero';
+        else result.taxonRank = 'outro';
+
+        return result;
+    }
+
+    // ------------------------------------------------------------
+    // Extrair todos os candidatos do texto
+    // ------------------------------------------------------------
+    function extractCandidates(text) {
+        // Regex mais abrangente para capturar padrões de nome científico
+        // Ex: "Handroanthus impetiginosus", "Cecropia pachystachya var. glabrata", "Myrcia cf. splendens", "Pinus sp."
+        const regex = /\b([A-ZÀ-Ú][a-zà-ú]*(?:\s+(?:cf\.|aff\.|\?))?(?:\s+[a-zà-ú]+(?:[\.\-][a-zà-ú]+)?)(?:\s+(?:var\.|subsp\.|f\.)\s+[a-zà-ú]+)?(?:\s+[a-zà-ú]+\.?)?)\b/g;
+        const matches = [...text.matchAll(regex)];
+        return matches.map(m => m[1].trim());
+    }
+
+    // ------------------------------------------------------------
+    // Processar texto e gerar linhas (uma por nome único)
+    // ------------------------------------------------------------
+    function processText(text) {
+        const candidates = extractCandidates(text);
+        if (candidates.length === 0) {
+            showWarning("Nenhum nome científico encontrado.", true);
+            return [];
+        }
+
+        // Agrupar por nome normalizado (ignorando diferenças de pontuação? faremos exato)
+        const uniqueMap = new Map();
+        candidates.forEach(rawName => {
+            // Normaliza: remove espaços extras
+            let norm = rawName.replace(/\s+/g, ' ').trim();
+            if (uniqueMap.has(norm)) {
+                uniqueMap.set(norm, uniqueMap.get(norm) + 1);
+            } else {
+                uniqueMap.set(norm, 1);
+            }
+        });
+
+        // Converter para array de objetos, cada um com parsed e frequência (não usaremos frequência na tabela, mas podemos ignorar)
+        const rows = [];
+        for (let [name, count] of uniqueMap.entries()) {
+            const parsed = parseScientificName(name);
+            // Validação adicional: se o gênero não está na lista, podemos marcar vernacularName como "não verificado" ou deixar em branco
+            if (!genusSet.has(parsed.genus)) {
+                parsed.vernacularName = '⚠️ gênero não listado';
+            } else {
+                // Se quiser, pode colocar um vernáculo fictício ou vazio
+                parsed.vernacularName = '';
+            }
+            rows.push(parsed);
+        }
+
+        // Ordenar por gênero
+        rows.sort((a, b) => a.genus.localeCompare(b.genus));
+        return rows;
+    }
+
+    // ------------------------------------------------------------
+    // Renderizar tabela
+    // ------------------------------------------------------------
+    function renderTable(rows) {
+        if (rows.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#7a9f7a;">Nenhum nome encontrado.</td></tr>';
+            rowCountSpan.innerText = '0 linhas';
+            return;
+        }
+
+        let html = '';
+        rows.forEach(row => {
+            html += `<tr>
+                <td>${escapeHtml(row.genus)}</td>
+                <td>${escapeHtml(row.specificEpithet)}</td>
+                <td>${escapeHtml(row.infraspecificEpithet)}</td>
+                <td>${escapeHtml(row.identificationQualifier)}</td>
+                <td><em>${escapeHtml(row.scientificName)}</em></td>
+                <td>${escapeHtml(row.vernacularName)}</td>
+                <td>${escapeHtml(row.taxonRank)}</td>
+            </tr>`;
+        });
+        tableBody.innerHTML = html;
+        rowCountSpan.innerText = rows.length + ' linhas';
+    }
+
+    // Escape simples para HTML (evitar injeção)
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe.replace(/[&<>"]/g, function(m) {
+            if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; if(m === '"') return '&quot;';
+            return m;
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Copiar tabela como TSV (valores separados por tab)
+    // ------------------------------------------------------------
+    function copyTableAsTSV() {
+        if (currentRows.length === 0) {
+            showWarning("Nada para copiar.", true);
+            return;
+        }
+        // Cabeçalho
+        const headers = ['genus','specificEpithet','infraspecificEpithet','identificationQualifier','scientificName','vernacularName','taxonRank'];
+        let tsv = headers.join('\t') + '\n';
+        // Linhas
+        currentRows.forEach(r => {
+            const row = [
+                r.genus,
+                r.specificEpithet,
+                r.infraspecificEpithet,
+                r.identificationQualifier,
+                r.scientificName,
+                r.vernacularName,
+                r.taxonRank
+            ].map(cell => cell.replace(/\t/g, ' ').replace(/\n/g, ' ')); // remove tabs e quebras dentro da célula
+            tsv += row.join('\t') + '\n';
+        });
+
+        // Copiar
+        navigator.clipboard.writeText(tsv).then(() => {
+            showWarning("Tabela copiada para a área de transferência (formato TSV).");
+        }).catch(() => {
+            // fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = tsv;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showWarning("Tabela copiada (método alternativo).");
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Eventos
+    // ------------------------------------------------------------
+    extractBtn.addEventListener('click', () => {
+        const text = inputText.value;
+        if (!text.trim()) {
+            showWarning("Cole um texto primeiro.", true);
+            return;
+        }
+        currentRows = processText(text);
+        renderTable(currentRows);
+    });
+
+    copyTableBtn.addEventListener('click', copyTableAsTSV);
+
+    // Exemplo inicial
+    inputText.value = "Lista de espécies: Handroanthus impetiginosus (ipê-roxo), Cecropia pachystachya var. glabrata, Eucalyptus tereticornis, Myrcia cf. splendens, Pinus elliottii, Schinus terebinthifolia, além de Araucaria angustifolia e Pteridium arachnoideum. Também foi observada uma Fabaceae indeterminada (Mimosa scabrella) e Myrciaria cf. dubia.";
+    // Já extrai ao carregar
+    window.addEventListener('load', () => {
+        currentRows = processText(inputText.value);
+        renderTable(currentRows);
+    });
+})();
+</script>
+</body>
+</html>
