@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GBIF · portais da natureza</title>
+    <!-- Font Awesome 6 (ícones de folhas, pássaros, árvores) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: linear-gradient(165deg, #d8ecc0 0%, #b6d7a8 40%, #a4c78a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* --- elementos decorativos de natureza (folhas grandes) --- */
+        .folha-decor {
+            position: absolute;
+            color: rgba(30, 80, 30, 0.15);
+            font-size: 200px;
+            z-index: 1;
+            pointer-events: none;
+            user-select: none;
+            transform-origin: center;
+        }
+
+        .folha-1 {
+            top: -20px;
+            left: -40px;
+            transform: rotate(-20deg) scaleX(-1);
+            font-size: 280px;
+            opacity: 0.4;
+        }
+
+        .folha-2 {
+            bottom: -50px;
+            right: -30px;
+            transform: rotate(130deg) scale(1.1);
+            font-size: 320px;
+            opacity: 0.35;
+            color: #3d6b3d;
+        }
+
+        .folha-3 {
+            top: 40%;
+            left: 70%;
+            transform: rotate(70deg);
+            font-size: 180px;
+            opacity: 0.2;
+            color: #2b5e2b;
+        }
+
+        /* --- pequenos detalhes verdes (pontos, vinhas) com pseudo-elementos --- */
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 10% 30%, #5f8b5f 1px, transparent 1px),
+                radial-gradient(circle at 95% 70%, #3f6840 1.5px, transparent 1.5px),
+                radial-gradient(circle at 40% 85%, #487a48 1px, transparent 1px),
+                radial-gradient(circle at 75% 15%, #2f5a2f 2px, transparent 2px);
+            background-size: 100px 100px;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* container principal com vidro fosco e borda orgânica */
+        .container {
+            position: relative;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);    
+            padding: 3rem 2rem;
+            border-radius: 80px 30px 80px 30px;
+            box-shadow: 0 30px 50px -10px rgba(30, 70, 30, 0.5),
+                        inset 0 0 0 2px rgba(255, 255, 255, 0.6),
+                        inset 0 0 20px #b3d9b0;
+            max-width: 1000px;
+            width: 100%;
+            border: 2px solid #ffffffb0;
+            transition: all 0.3s;
+        }
+
+        h1 {
+            color: #1b4d1b;
+            font-weight: 400;
+            font-size: 2.6rem;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 10px #d0f0c8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        h1 i {
+            color: #3b6e3b;
+            font-size: 2.4rem;
+            filter: drop-shadow(0 4px 4px #9fcc9f);
+        }
+
+        .subtitle {
+            color: #1d4f1d;
+            font-size: 1.3rem;
+            font-style: italic;
+            margin: 0.5rem 0 2.5rem 0;
+            padding-bottom: 0.8rem;
+            border-bottom: 3px dotted #78ab78;
+            display: inline-block;
+            width: auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            background: rgba(170, 220, 150, 0.2);
+            border-radius: 100px;
+        }
+
+        /* --- grupo dos 3 botões principais --- */
+        .botoes-natureza {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            margin: 40px 0 30px;
+        }
+
+        /* estilo base do botão (agora aplicado a links <a>) */
+        .btn-gbif {
+            background: #1d5e1d;
+            border: none;
+            padding: 22px 30px;
+            border-radius: 120px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 12px 0 #0a3a0a, 0 12px 25px -5px #1f4f1f;
+            transition: all 0.18s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            min-width: 280px;
+            border: 2px solid #bce0ac;
+            position: relative;
+            overflow: hidden;
+            flex: 0 1 auto;
+            text-shadow: 2px 2px 0 #144014;
+            text-decoration: none; /* remove sublinhado do link */
+        }
+
+        .btn-gbif i {
+            font-size: 2.2rem;
+            filter: drop-shadow(0 4px 2px #154015);
+            transition: transform 0.2s;
+        }
+
+        /* variações de tom suaves (mantendo a harmonia verde) */
+        .btn-aves {
+            background: #1f6d1f;
+            box-shadow: 0 12px 0 #124812, 0 12px 25px -5px #1f4f1f;
+        }
+        .btn-ictio {
+            background: #236b23;
+        }
+        .btn-florestal {
+            background: #1d621d;
+        }
+
+        .btn-gbif:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 0 #0f3f0f, 0 22px 30px -5px #174017;
+            background: #328532;
+        }
+
+        .btn-gbif:active {
+            transform: translateY(6px);
+            box-shadow: 0 6px 0 #0f3f0f, 0 10px 20px -5px #1f4f1f;
+        }
+
+        .btn-gbif:hover i {
+            transform: scale(1.1) rotate(3deg);
+        }
+
+        /* pequeno detalhe verde vivo: folha que aparece no canto do botão */
+        .btn-gbif::after {
+            content: "🌱";
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            font-size: 2rem;
+            opacity: 0.3;
+            transform: rotate(15deg);
+            transition: 0.2s;
+            pointer-events: none;
+        }
+
+        .btn-gbif:hover::after {
+            opacity: 0.7;
+            bottom: -5px;
+            right: -5px;
+            transform: rotate(5deg) scale(1.1);
+        }
+
+        /* frase de apoio com detalhe */
+        .info-extra {
+            color: #174017;
+            font-size: 1.2rem;
+            margin: 30px 0 10px;
+            background: rgba(200, 240, 180, 0.4);
+            padding: 12px 20px;
+            border-radius: 60px;
+            display: inline-block;
+            border: 2px dashed #5b8c5b;
+        }
+
+        .info-extra i {
+            margin: 0 8px;
+            color: #2d6b2d;
+        }
+
+        /* rodapé "powered by Brenno Benk" */
+        footer {
+            position: relative;
+            z-index: 25;
+            margin-top: 40px;
+            padding: 20px 25px;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #194d19;
+            background: rgba(245, 255, 230, 0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 120px;
+            border: 2px solid #a7cf9c;
+            box-shadow: 0 10px 20px -10px #264d26;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            letter-spacing: 1px;
+        }
+
+        footer i {
+            color: #366e36;
+            font-size: 1.8rem;
+            opacity: 0.9;
+        }
+
+        footer span {
+            font-weight: 300;
+            color: #1d4f1d;
+        }
+
+        /* adaptação para telas menores */
+        @media (max-width: 700px) {
+            h1 { font-size: 2rem; }
+            .btn-gbif {
+                font-size: 1.3rem;
+                padding: 16px 20px;
+                min-width: 220px;
+            }
+            .btn-gbif i { font-size: 1.8rem; }
+            .subtitle { font-size: 1.1rem; }
+            footer { font-size: 1.1rem; padding: 15px 20px; }
+            .folha-decor { font-size: 150px; }
+        }
+
+        @media (max-width: 450px) {
+            .container { padding: 2rem 1rem; }
+            h1 { flex-direction: column; gap: 5px; }
+            .botoes-natureza { gap: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- grandes folhas decorativas de fundo -->
+    <i class="fas fa-leaf folha-decor folha-1"></i>
+    <i class="fas fa-leaf folha-decor folha-2"></i>
+    <i class="fas fa-leaf folha-decor folha-3"></i>
+
+    <!-- pequenos ícones extras de natureza flutuantes (opcional) -->
+    <div style="position: absolute; top: 15%; left: 5%; z-index: 5; color: #4f7a4f; opacity: 0.2; font-size: 3rem;">🍃</div>
+    <div style="position: absolute; bottom: 12%; right: 4%; z-index: 5; color: #3b683b; opacity: 0.25; font-size: 4rem;">🌿</div>
+
+    <div class="container">
+        <h1>
+            <i class="fas fa-leaf"></i> 
+            GBIF CAJ 
+            <i class="fas fa-tree"></i>
+        </h1>
+        <div class="subtitle">
+            
+
+        <!-- 3 BOTÕES PRINCIPAIS AGORA COMO LINKS CLICÁVEIS -->
+        <div class="botoes-natureza">
+            <!-- Substitua os href pelos links reais desejados -->
+            <a class="btn-gbif btn-aves" href="https://www.gbif.org/pt/species/aves" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-dove"></i> GBIF AVES
+            </a>
+            <a class="btn-gbif btn-ictio" href="https://www.gbif.org/pt/species/actinopterygii" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-fish"></i> GBIF ICTIOFAUNA
+            </a>
+            <a class="btn-gbif btn-florestal" href="https://www.gbif.org/pt/species/plantae" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-tree"></i> GBIF FLORESTAL
+            </a>
+        </div>
+
+        <!-- pequeno detalhe verde adicional: cipó ou texto -->
+       
+    </div>
+
+    <!-- RODAPÉ COM POWERED BY BRENNO BENK -->
+    <footer>
+        <i class="fas fa-leaf"></i>
+        <span>⚡ powered by Brenno Benk ⚡</span>
+        <i class="fas fa-leaf"></i>
+    </footer>
+
+    <!-- micro interação: feedback visual ao clique (opcional, não interfere no link) -->
+    <script>
+        (function() {
+            const botoes = document.querySelectorAll('.btn-gbif');
+            botoes.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    // apenas feedback visual, o link ainda será seguido
+                    this.style.transform = 'translateY(4px)';
+                    this.style.boxShadow = '0 8px 0 #0a3a0a, 0 8px 15px -3px #1f4f1f';
+                    // o redirecionamento ocorre normalmente, mas se quiser garantir um pequeno atraso visual:
+                    // não usamos preventDefault, então o href é seguido imediatamente.
+                    // Para dar tempo de ver o efeito, poderíamos adicionar um setTimeout,
+                    // mas isso poderia prejudicar a experiência. Vamos deixar o efeito e o link agirem em paralelo.
+                    // O navegador é rápido, mas dá pra ver a mudança.
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
