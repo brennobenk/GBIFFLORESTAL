@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extrator de Nomes Científicos (Tabela Completa)</title>
+    <title>Extrator de Nomes Científicos + Mostrador de Ignorados</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
         body { background: #eef3e9; margin: 0; padding: 20px; display: flex; justify-content: center; }
@@ -26,11 +26,66 @@
         .warning { background: #fff3cd; border-left: 6px solid #ffc107; padding: 12px; border-radius: 12px; margin: 15px 0; }
         .small-note { color: #4b6a4b; font-size: 0.9rem; margin-top: 5px; }
         .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+        /* Estilo do mostrador de análise */
+        .analysis-panel {
+            background: #2d3e2d;
+            color: #f0f7e6;
+            padding: 15px 20px;
+            border-radius: 24px;
+            margin-top: 25px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .analysis-stats {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .analysis-stats span {
+            background: #1e2e1e;
+            padding: 5px 15px;
+            border-radius: 40px;
+        }
+        .analysis-lists {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .analysis-list {
+            flex: 1 1 200px;
+            background: #243024;
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .analysis-list h4 {
+            margin: 0 0 8px 0;
+            color: #cfdfcf;
+            font-weight: 400;
+            border-bottom: 1px solid #4b6a4b;
+            padding-bottom: 3px;
+        }
+        .added-item {
+            color: #b9f5b9;
+            font-family: 'Courier New', monospace;
+        }
+        .ignored-item {
+            color: #f9b5b5;
+            font-family: 'Courier New', monospace;
+        }
+        .analysis-list div {
+            margin: 2px 0;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🌿 Extrator para Tabela Taxonômica (plantas/árvores)</h1>
+    <h1>🌿 Extrator para Tabela Taxonômica + Mostrador de Ignorados</h1>
     <div class="flex-row">
         <!-- Painel de entrada -->
         <div class="input-panel">
@@ -44,10 +99,10 @@
             <div id="warningMessage" class="warning" style="display: none;"></div>
             <div class="small-note">
                 ✅ Reconhece: gênero + epíteto, qualificadores (cf., aff., ?), infra (var., subsp., f.), "sp.".<br>
-                🔍 Usa lista de +200 gêneros de árvores para validar. A tabela pode ser copiada para Excel.
+                🔍 Usa lista de +200 gêneros de árvores para validar. Abaixo, veja o que foi adicionado (verde) e todos os trechos ignorados (vermelho).
             </div>
         </div>
-        <!-- Painel de saída (tabela) -->
+        <!-- Painel de saída (tabela + mostrador) -->
         <div class="output-panel">
             <div class="table-wrapper" id="tableWrapper">
                 <table id="resultTable">
@@ -67,6 +122,24 @@
                     </tbody>
                 </table>
             </div>
+            <!-- MOSTRADOR EM TEMPO REAL -->
+            <div id="analysisPanel" class="analysis-panel" style="display: none;">
+                <div class="analysis-stats">
+                    <span id="totalAnalyzed">0 analisados</span>
+                    <span id="totalAdded" style="color:#b9f5b9;">0 adicionados</span>
+                    <span id="totalIgnored" style="color:#f9b5b5;">0 ignorados</span>
+                </div>
+                <div class="analysis-lists">
+                    <div class="analysis-list">
+                        <h4>✅ Adicionados (verde)</h4>
+                        <div id="addedList"></div>
+                    </div>
+                    <div class="analysis-list">
+                        <h4>❌ Ignorados (vermelho) – todos os fragmentos não reconhecidos</h4>
+                        <div id="ignoredList"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -74,7 +147,7 @@
 <script>
 (function() {
     // ------------------------------------------------------------
-    // Lista de gêneros de árvores/plantas (mais de 200 – amostra representativa)
+    // Lista de gêneros de árvores/plantas (mais de 200)
     // ------------------------------------------------------------
     const genusList = [
         "Acacia","Acalypha","Acer","Achillea","Acmella","Acrocomia","Actinostemon","Adiantum","Aegiphila","Aeschynomene",
@@ -178,9 +251,7 @@
     ];
     const genusSet = new Set(genusList);
 
-    // ------------------------------------------------------------
     // Elementos DOM
-    // ------------------------------------------------------------
     const inputText = document.getElementById('inputText');
     const extractBtn = document.getElementById('extractBtn');
     const copyTableBtn = document.getElementById('copyTableBtn');
@@ -188,12 +259,15 @@
     const rowCountSpan = document.getElementById('rowCount');
     const warningDiv = document.getElementById('warningMessage');
 
-    // Armazenar os dados atuais (array de objetos)
+    const analysisPanel = document.getElementById('analysisPanel');
+    const totalAnalyzedSpan = document.getElementById('totalAnalyzed');
+    const totalAddedSpan = document.getElementById('totalAdded');
+    const totalIgnoredSpan = document.getElementById('totalIgnored');
+    const addedListDiv = document.getElementById('addedList');
+    const ignoredListDiv = document.getElementById('ignoredList');
+
     let currentRows = [];
 
-    // ------------------------------------------------------------
-    // Função de aviso
-    // ------------------------------------------------------------
     function showWarning(msg, isError = false) {
         warningDiv.innerText = msg;
         warningDiv.style.display = 'block';
@@ -202,13 +276,9 @@
         setTimeout(() => { warningDiv.style.display = 'none'; }, 4000);
     }
 
-    // ------------------------------------------------------------
-    // Parsing de um nome científico completo
-    // ------------------------------------------------------------
+    // Parsing de um nome científico
     function parseScientificName(rawName) {
-        // Limpa espaços extras
         let name = rawName.trim().replace(/\s+/g, ' ');
-        // Inicializa resultado
         let result = {
             genus: '',
             specificEpithet: '',
@@ -219,57 +289,45 @@
             taxonRank: 'outro'
         };
 
-        // Palavras
         let words = name.split(' ');
         if (words.length === 0) return result;
 
-        // Gênero: primeira palavra com inicial maiúscula (ou toda maiúscula em alguns casos)
         let firstWord = words[0];
-        // Se a primeira palavra tiver letra minúscula no início, não parece nome científico
         if (!/^[A-ZÀ-Ú][a-zà-ú]*$/.test(firstWord) && !/^[A-ZÀ-Ú]+$/.test(firstWord)) {
-            // Pode ser algo como "sp."? não, ignoramos
             return result;
         }
         result.genus = firstWord;
 
-        // Verifica se é apenas gênero (ex: "Pinus" sozinho, ou "Pinus sp.")
         if (words.length === 1) {
             result.scientificName = result.genus;
             result.taxonRank = 'gênero';
             return result;
         }
 
-        // Pega o restante
         let remaining = words.slice(1);
         let qualifier = '';
         let specific = '';
         let infra = '';
 
-        // Detecta qualificadores comuns no início do restante: cf., aff., ?, etc.
         if (remaining.length > 0 && /^(cf\.|aff\.|\?)$/i.test(remaining[0])) {
             qualifier = remaining[0];
             remaining = remaining.slice(1);
         }
 
-        // Agora, o próximo deve ser o epíteto específico (se existir)
         if (remaining.length > 0) {
-            // Pode ser "sp.", "spp." que indicam gênero não identificado
             if (/^sp(p)?\.$/i.test(remaining[0])) {
                 specific = remaining[0];
-                // Se só sobrou isso, é gênero com indicação de espécie
                 result.scientificName = result.genus + ' ' + specific;
                 result.taxonRank = 'gênero';
                 result.identificationQualifier = qualifier;
                 return result;
             }
-            // Epíteto específico normal (minúsculo, pode ter hífen)
             if (/^[a-zà-ú]+[a-zà-ú\-]*\.?$/.test(remaining[0])) {
                 specific = remaining[0];
                 remaining = remaining.slice(1);
             }
         }
 
-        // Depois do epíteto específico, pode haver infra (var., subsp., f., etc.) e mais um epíteto
         if (remaining.length >= 2) {
             if (/^(var\.|subsp\.|f\.|convar\.)$/i.test(remaining[0])) {
                 let infraType = remaining[0];
@@ -281,9 +339,6 @@
             }
         }
 
-        // Se ainda sobrou algo, junta no infra? Mas normalmente não.
-
-        // Monta scientificName
         let parts = [result.genus];
         if (qualifier) parts.push(qualifier);
         if (specific) parts.push(specific);
@@ -293,94 +348,175 @@
         result.specificEpithet = specific || '';
         result.infraspecificEpithet = infra || '';
 
-        // Determina rank
         if (infra) result.taxonRank = 'infraespécie';
         else if (specific && specific !== 'sp.' && specific !== 'spp.') result.taxonRank = 'espécie';
         else if (result.genus) result.taxonRank = 'gênero';
-        else result.taxonRank = 'outro';
 
         return result;
     }
 
-    // ------------------------------------------------------------
-    // Extrair todos os candidatos do texto
-    // ------------------------------------------------------------
-    function extractCandidates(text) {
-        // Regex mais abrangente para capturar padrões de nome científico
-        // Ex: "Handroanthus impetiginosus", "Cecropia pachystachya var. glabrata", "Myrcia cf. splendens", "Pinus sp."
+    // Extrair candidatos com posições (para identificar fragmentos ignorados)
+    function extractCandidatesWithPositions(text) {
         const regex = /\b([A-ZÀ-Ú][a-zà-ú]*(?:\s+(?:cf\.|aff\.|\?))?(?:\s+[a-zà-ú]+(?:[\.\-][a-zà-ú]+)?)(?:\s+(?:var\.|subsp\.|f\.)\s+[a-zà-ú]+)?(?:\s+[a-zà-ú]+\.?)?)\b/g;
-        const matches = [...text.matchAll(regex)];
-        return matches.map(m => m[1].trim());
+        const matches = [];
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            matches.push({
+                text: match[1].trim(),
+                index: match.index,
+                endIndex: regex.lastIndex
+            });
+        }
+        return matches;
     }
 
-    // ------------------------------------------------------------
-    // Processar texto e gerar linhas (uma por nome único)
-    // ------------------------------------------------------------
-    function processText(text) {
-        const candidates = extractCandidates(text);
-        if (candidates.length === 0) {
-            showWarning("Nenhum nome científico encontrado.", true);
-            return [];
+    // Obter todos os fragmentos ignorados (incluindo textos que não são candidatos)
+    function getIgnoredFragments(text, matches) {
+        if (matches.length === 0) {
+            // Se não há matches, todo o texto é ignorado (mas podemos quebrar em linhas/palavras)
+            return text.split(/\s+/).filter(t => t.trim() !== '');
         }
 
-        // Agrupar por nome normalizado (ignorando diferenças de pontuação? faremos exato)
-        const uniqueMap = new Map();
-        candidates.forEach(rawName => {
-            // Normaliza: remove espaços extras
-            let norm = rawName.replace(/\s+/g, ' ').trim();
-            if (uniqueMap.has(norm)) {
-                uniqueMap.set(norm, uniqueMap.get(norm) + 1);
+        // Ordenar matches por índice
+        matches.sort((a, b) => a.index - b.index);
+        let ignored = [];
+        let lastEnd = 0;
+
+        matches.forEach(m => {
+            // Texto antes do match
+            if (m.index > lastEnd) {
+                let before = text.substring(lastEnd, m.index).trim();
+                if (before) {
+                    // Quebra o trecho em palavras/pontuação (simples)
+                    before.split(/\s+/).forEach(token => {
+                        if (token.trim()) ignored.push(token.trim());
+                    });
+                }
+            }
+            // Atualiza lastEnd
+            lastEnd = m.endIndex;
+        });
+
+        // Depois do último match
+        if (lastEnd < text.length) {
+            let after = text.substring(lastEnd).trim();
+            if (after) {
+                after.split(/\s+/).forEach(token => {
+                    if (token.trim()) ignored.push(token.trim());
+                });
+            }
+        }
+
+        return ignored;
+    }
+
+    // Processar texto e retornar análise completa
+    function analyzeText(text) {
+        const matches = extractCandidatesWithPositions(text);
+        const totalCandidates = matches.length;
+
+        const added = [];
+        const ignoredCandidates = []; // candidatos que não viraram linhas
+        const ignoredFragments = [];  // fragmentos não capturados
+
+        // Processa cada match
+        matches.forEach(m => {
+            const parsed = parseScientificName(m.text);
+            if (!parsed.genus) {
+                ignoredCandidates.push(m.text);
             } else {
-                uniqueMap.set(norm, 1);
+                if (!genusSet.has(parsed.genus)) {
+                    parsed.vernacularName = '⚠️ gênero não listado';
+                } else {
+                    parsed.vernacularName = '';
+                }
+                // Evitar duplicatas no added
+                const alreadyAdded = added.some(item => item.scientificName === parsed.scientificName);
+                if (!alreadyAdded) {
+                    added.push(parsed);
+                } else {
+                    // Se duplicata, considera como ignorado? Não, apenas não adiciona de novo.
+                }
             }
         });
 
-        // Converter para array de objetos, cada um com parsed e frequência (não usaremos frequência na tabela, mas podemos ignorar)
-        const rows = [];
-        for (let [name, count] of uniqueMap.entries()) {
-            const parsed = parseScientificName(name);
-            // Validação adicional: se o gênero não está na lista, podemos marcar vernacularName como "não verificado" ou deixar em branco
-            if (!genusSet.has(parsed.genus)) {
-                parsed.vernacularName = '⚠️ gênero não listado';
-            } else {
-                // Se quiser, pode colocar um vernáculo fictício ou vazio
-                parsed.vernacularName = '';
-            }
-            rows.push(parsed);
-        }
+        // Fragmentos ignorados (tudo que não está em nenhum match)
+        const rawIgnored = getIgnoredFragments(text, matches);
+        rawIgnored.forEach(frag => ignoredFragments.push(frag));
 
-        // Ordenar por gênero
-        rows.sort((a, b) => a.genus.localeCompare(b.genus));
-        return rows;
+        added.sort((a, b) => a.genus.localeCompare(b.genus));
+
+        return {
+            added: added,
+            ignoredCandidates: ignoredCandidates,
+            ignoredFragments: ignoredFragments,
+            totalCandidates: totalCandidates
+        };
     }
 
-    // ------------------------------------------------------------
-    // Renderizar tabela
-    // ------------------------------------------------------------
-    function renderTable(rows) {
+    // Renderizar tabela e mostrador
+    function renderTableAndAnalysis(analysis) {
+        const rows = analysis.added;
+        const ignoredCandidates = analysis.ignoredCandidates;
+        const ignoredFragments = analysis.ignoredFragments;
+        const totalCandidates = analysis.totalCandidates;
+
+        // Tabela
         if (rows.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#7a9f7a;">Nenhum nome encontrado.</td></tr>';
             rowCountSpan.innerText = '0 linhas';
-            return;
+        } else {
+            let html = '';
+            rows.forEach(row => {
+                html += `<tr>
+                    <td>${escapeHtml(row.genus)}</td>
+                    <td>${escapeHtml(row.specificEpithet)}</td>
+                    <td>${escapeHtml(row.infraspecificEpithet)}</td>
+                    <td>${escapeHtml(row.identificationQualifier)}</td>
+                    <td><em>${escapeHtml(row.scientificName)}</em></td>
+                    <td>${escapeHtml(row.vernacularName)}</td>
+                    <td>${escapeHtml(row.taxonRank)}</td>
+                </tr>`;
+            });
+            tableBody.innerHTML = html;
+            rowCountSpan.innerText = rows.length + ' linhas';
         }
 
-        let html = '';
-        rows.forEach(row => {
-            html += `<tr>
-                <td>${escapeHtml(row.genus)}</td>
-                <td>${escapeHtml(row.specificEpithet)}</td>
-                <td>${escapeHtml(row.infraspecificEpithet)}</td>
-                <td>${escapeHtml(row.identificationQualifier)}</td>
-                <td><em>${escapeHtml(row.scientificName)}</em></td>
-                <td>${escapeHtml(row.vernacularName)}</td>
-                <td>${escapeHtml(row.taxonRank)}</td>
-            </tr>`;
-        });
-        tableBody.innerHTML = html;
-        rowCountSpan.innerText = rows.length + ' linhas';
+        // Mostrador
+        if (totalCandidates === 0 && ignoredFragments.length === 0) {
+            analysisPanel.style.display = 'none';
+        } else {
+            analysisPanel.style.display = 'block';
+            totalAnalyzedSpan.innerText = totalCandidates + ' candidatos analisados';
+            totalAddedSpan.innerText = rows.length + ' adicionados';
+            totalIgnoredSpan.innerText = (ignoredCandidates.length + ignoredFragments.length) + ' ignorados';
+
+            // Lista de adicionados
+            addedListDiv.innerHTML = '';
+            rows.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'added-item';
+                div.textContent = r.scientificName;
+                addedListDiv.appendChild(div);
+            });
+
+            // Lista de ignorados: primeiro os candidatos rejeitados, depois os fragmentos
+            ignoredListDiv.innerHTML = '';
+            ignoredCandidates.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'ignored-item';
+                div.textContent = '[Candidato] ' + name;
+                ignoredListDiv.appendChild(div);
+            });
+            ignoredFragments.forEach(frag => {
+                const div = document.createElement('div');
+                div.className = 'ignored-item';
+                div.textContent = '[Texto] ' + frag;
+                ignoredListDiv.appendChild(div);
+            });
+        }
     }
 
-    // Escape simples para HTML (evitar injeção)
     function escapeHtml(unsafe) {
         if (!unsafe) return '';
         return unsafe.replace(/[&<>"]/g, function(m) {
@@ -389,18 +525,14 @@
         });
     }
 
-    // ------------------------------------------------------------
-    // Copiar tabela como TSV (valores separados por tab)
-    // ------------------------------------------------------------
+    // Copiar tabela como TSV
     function copyTableAsTSV() {
         if (currentRows.length === 0) {
             showWarning("Nada para copiar.", true);
             return;
         }
-        // Cabeçalho
         const headers = ['genus','specificEpithet','infraspecificEpithet','identificationQualifier','scientificName','vernacularName','taxonRank'];
         let tsv = headers.join('\t') + '\n';
-        // Linhas
         currentRows.forEach(r => {
             const row = [
                 r.genus,
@@ -410,15 +542,13 @@
                 r.scientificName,
                 r.vernacularName,
                 r.taxonRank
-            ].map(cell => cell.replace(/\t/g, ' ').replace(/\n/g, ' ')); // remove tabs e quebras dentro da célula
+            ].map(cell => cell.replace(/\t/g, ' ').replace(/\n/g, ' '));
             tsv += row.join('\t') + '\n';
         });
 
-        // Copiar
         navigator.clipboard.writeText(tsv).then(() => {
             showWarning("Tabela copiada para a área de transferência (formato TSV).");
         }).catch(() => {
-            // fallback
             const textarea = document.createElement('textarea');
             textarea.value = tsv;
             document.body.appendChild(textarea);
@@ -429,27 +559,26 @@
         });
     }
 
-    // ------------------------------------------------------------
     // Eventos
-    // ------------------------------------------------------------
     extractBtn.addEventListener('click', () => {
         const text = inputText.value;
         if (!text.trim()) {
             showWarning("Cole um texto primeiro.", true);
             return;
         }
-        currentRows = processText(text);
-        renderTable(currentRows);
+        const analysis = analyzeText(text);
+        currentRows = analysis.added;
+        renderTableAndAnalysis(analysis);
     });
 
     copyTableBtn.addEventListener('click', copyTableAsTSV);
 
     // Exemplo inicial
     inputText.value = "Lista de espécies: Handroanthus impetiginosus (ipê-roxo), Cecropia pachystachya var. glabrata, Eucalyptus tereticornis, Myrcia cf. splendens, Pinus elliottii, Schinus terebinthifolia, além de Araucaria angustifolia e Pteridium arachnoideum. Também foi observada uma Fabaceae indeterminada (Mimosa scabrella) e Myrciaria cf. dubia.";
-    // Já extrai ao carregar
     window.addEventListener('load', () => {
-        currentRows = processText(inputText.value);
-        renderTable(currentRows);
+        const analysis = analyzeText(inputText.value);
+        currentRows = analysis.added;
+        renderTableAndAnalysis(analysis);
     });
 })();
 </script>
