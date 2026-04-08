@@ -521,10 +521,38 @@ function buildTaxonIndexes() {
   }
 
   for (const row of taxonData) {
+    // Indexa pelo scientificName completo (com autoria, como vem no TSV)
     const key = normalize(row.scientificName);
-    if (!key) continue;
-    if (!scientificIndex.has(key)) scientificIndex.set(key, []);
-    scientificIndex.get(key).push(row);
+    if (key) {
+      if (!scientificIndex.has(key)) scientificIndex.set(key, []);
+      scientificIndex.get(key).push(row);
+    }
+
+    // Indexa também pelo nome sem autoria usando os campos separados:
+    // genus apenas (para busca de gênero)
+    const genus = normalize(row.genus);
+    const epithet = normalize(row.specificEpithet);
+    const infra = normalize(row.infraspecificEpithet);
+
+    if (genus) {
+      // Chave só gênero
+      if (!scientificIndex.has(genus)) scientificIndex.set(genus, []);
+      scientificIndex.get(genus).push(row);
+
+      if (epithet) {
+        // Chave binomial (genus + espécie) sem autoria
+        const binomial = genus + ' ' + epithet;
+        if (!scientificIndex.has(binomial)) scientificIndex.set(binomial, []);
+        scientificIndex.get(binomial).push(row);
+
+        if (infra) {
+          // Chave trinomial (genus + espécie + infraespécie) sem autoria
+          const trinomial = binomial + ' ' + infra;
+          if (!scientificIndex.has(trinomial)) scientificIndex.set(trinomial, []);
+          scientificIndex.get(trinomial).push(row);
+        }
+      }
+    }
   }
 }
 
