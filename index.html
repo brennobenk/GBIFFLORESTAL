@@ -311,6 +311,21 @@
 
   /* tooltip on truncated cells */
   td[title] { cursor: default; }
+
+  .mode-btn {
+    padding: 8px 18px;
+    border: 2px solid var(--border);
+    border-radius: 99px;
+    background: white;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .mode-btn:hover { border-color: var(--green-light); color: var(--green-mid); }
+  .mode-btn.mode-active { background: var(--green-mid); border-color: var(--green-mid); color: white; }
 </style>
 </head>
 <body>
@@ -361,6 +376,11 @@
 
   <!-- RESULTS -->
   <div id="results-section">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--muted);">MODO DE EXIBIÇÃO</span>
+      <button id="btn-mode-one" class="mode-btn mode-active" onclick="setMode('one')">1 taxon por linha</button>
+      <button id="btn-mode-all" class="mode-btn" onclick="setMode('all')">Todos os resultados</button>
+    </div>
     <div id="stats-bar"></div>
     <div class="card" style="padding:0; overflow:hidden;">
       <div class="table-wrap">
@@ -449,6 +469,7 @@ let vernacularIndex = new Map();     // normalizedName → [ids]
 let taxonLoaded = false;
 let vernacularLoaded = false;
 let lastResults = [];
+let displayMode = 'one';
 
 // ── HELPERS ────────────────────────────────────────────────────────
 function normalize(str) {
@@ -935,6 +956,42 @@ function clearResults() {
   lastResults = [];
 }
 
+
+function setMode(mode) {
+  displayMode = mode;
+  document.getElementById('btn-mode-one').classList.toggle('mode-active', mode === 'one');
+  document.getElementById('btn-mode-all').classList.toggle('mode-active', mode === 'all');
+  refreshDisplay();
+}
+
+function getDisplayRows(rows) {
+  if (displayMode === 'all') return rows;
+  const seen = new Map();
+  for (const r of rows) {
+    const key = r.nomeDigitado;
+    if (!seen.has(key)) {
+      seen.set(key, r);
+    } else {
+      const prev = seen.get(key);
+      const curOk = r.taxonomicStatus === 'NOME_ACEITO' || !r._synonym;
+      const prevOk = prev.taxonomicStatus === 'NOME_ACEITO' || !prev._synonym;
+      if (curOk && !prevOk) seen.set(key, r);
+    }
+  }
+  return [...seen.values()];
+}
+
+function refreshDisplay() {
+  if (!lastResults.length) return;
+  const display = getDisplayRows(lastResults);
+  renderTable(display);
+  renderTable2(display);
+  const names = [...new Set(lastResults.map(r => r.nomeDigitado))];
+  const found = display.filter(r => r.statusBusca !== 'Nao encontrado').length;
+  const notFound = display.filter(r => r.statusBusca === 'Nao encontrado').length;
+  renderStats(names.length, found, notFound);
+}
+
 // ── LIVE SEARCH ──────────────────────────────────────────────────────
 function runLiveSearch() {
   if (!taxonLoaded || !vernacularLoaded) return;
@@ -992,8 +1049,9 @@ function runLiveSearch() {
     }
   }
 
-  renderTable(lastResults);
-  renderTable2(lastResults);
+  const display = getDisplayRows(lastResults);
+  renderTable(display);
+  renderTable2(display);
   renderStats(names.length, found, notFound);
   document.getElementById('results-section').style.display = 'block';
   document.getElementById('btn-export').disabled = (lastResults.length === 0);
