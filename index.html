@@ -1,586 +1,921 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extrator de Nomes Científicos + Mostrador de Ignorados</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
-        body { background: #eef3e9; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 1400px; width: 100%; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(30,60,30,0.15); padding: 25px; }
-        h1 { color: #1d4d1d; font-weight: 500; border-left: 10px solid #2e7d32; padding-left: 20px; margin-top: 0; }
-        .flex-row { display: flex; gap: 25px; flex-wrap: wrap; }
-        .input-panel { flex: 1; min-width: 350px; }
-        .output-panel { flex: 2; min-width: 600px; }
-        textarea { width: 100%; height: 250px; padding: 18px; border: 2px solid #bcdab0; border-radius: 20px; font-size: 1rem; resize: vertical; background: #fafdf8; }
-        button { background: #1d4d1d; color: white; border: none; padding: 12px 28px; border-radius: 40px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: 0.2s; margin: 10px 5px 10px 0; box-shadow: 0 4px 8px rgba(0,40,0,0.2); }
-        button:hover { background: #0b360b; transform: scale(1.02); }
-        button.secondary { background: #3a6b3a; }
-        .counter { background: #e2f0da; padding: 8px 18px; border-radius: 40px; display: inline-block; margin-left: 10px; font-weight: 600; }
-        .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #cde2c0; border-radius: 16px; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        th { background: #2e7d32; color: white; font-weight: 600; padding: 14px 8px; position: sticky; top: 0; white-space: nowrap; }
-        td { padding: 10px 8px; border-bottom: 1px solid #cde2c0; }
-        tr:nth-child(even) { background: #f6fbf3; }
-        tr:hover { background: #e2f0da; }
-        .warning { background: #fff3cd; border-left: 6px solid #ffc107; padding: 12px; border-radius: 12px; margin: 15px 0; }
-        .small-note { color: #4b6a4b; font-size: 0.9rem; margin-top: 5px; }
-        .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Filogenia Flora do Brasil — Reflora/GBIF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --green-deep: #1a3a2a;
+    --green-mid: #2d6a4f;
+    --green-light: #52b788;
+    --green-pale: #b7e4c7;
+    --green-ghost: #f0faf4;
+    --cream: #fdfaf5;
+    --ink: #1c1c1c;
+    --muted: #6b7c72;
+    --border: #d8ead1;
+    --yellow-soft: #fff8e1;
+    --red-soft: #fff0f0;
+    --red-text: #c0392b;
+    --shadow: 0 2px 16px rgba(26,58,42,0.10);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Estilo do mostrador de análise */
-        .analysis-panel {
-            background: #2d3e2d;
-            color: #f0f7e6;
-            padding: 15px 20px;
-            border-radius: 24px;
-            margin-top: 25px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .analysis-stats {
-            display: flex;
-            gap: 25px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        .analysis-stats span {
-            background: #1e2e1e;
-            padding: 5px 15px;
-            border-radius: 40px;
-        }
-        .analysis-lists {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-        .analysis-list {
-            flex: 1 1 200px;
-            background: #243024;
-            padding: 10px 15px;
-            border-radius: 20px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        .analysis-list h4 {
-            margin: 0 0 8px 0;
-            color: #cfdfcf;
-            font-weight: 400;
-            border-bottom: 1px solid #4b6a4b;
-            padding-bottom: 3px;
-        }
-        .added-item {
-            color: #b9f5b9;
-            font-family: 'Courier New', monospace;
-        }
-        .ignored-item {
-            color: #f9b5b5;
-            font-family: 'Courier New', monospace;
-        }
-        .analysis-list div {
-            margin: 2px 0;
-            font-size: 0.9rem;
-            word-break: break-word;
-        }
-    </style>
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--green-deep);
+    color: white;
+    padding: 28px 40px 22px;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    border-bottom: 4px solid var(--green-light);
+  }
+  header .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  header .logo span { color: var(--green-light); }
+  header .subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--green-pale);
+    margin-bottom: 3px;
+    letter-spacing: 0.04em;
+  }
+
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 36px 32px 60px;
+  }
+
+  /* ── CARDS ─────────────────────────────── */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    color: var(--green-deep);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 18px;
+    background: var(--green-light);
+    border-radius: 2px;
+  }
+
+  /* ── FILE INPUTS ────────────────────────── */
+  .file-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media(max-width:700px){ .file-grid { grid-template-columns: 1fr; } }
+
+  .file-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 20px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .file-zone:hover { border-color: var(--green-light); background: var(--green-ghost); }
+  .file-zone.loaded { border-color: var(--green-mid); border-style: solid; background: var(--green-ghost); }
+  .file-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .file-icon { font-size: 2rem; margin-bottom: 6px; }
+  .file-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--green-mid); font-weight: 500; }
+  .file-status { font-size: 0.75rem; color: var(--muted); margin-top: 6px; min-height: 18px; }
+  .file-status.ok { color: var(--green-mid); font-weight: 500; }
+
+  /* ── SEARCH ─────────────────────────────── */
+  .search-row { display: flex; gap: 16px; align-items: flex-start; }
+  textarea#names {
+    flex: 1;
+    height: 130px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--ink);
+    resize: vertical;
+    background: var(--green-ghost);
+    outline: none;
+    transition: border-color .2s;
+  }
+  textarea#names:focus { border-color: var(--green-light); }
+  textarea#names::placeholder { color: #a0b4a8; }
+
+  .btn-col { display: flex; flex-direction: column; gap: 10px; min-width: 170px; }
+
+  button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .18s, transform .1s, opacity .2s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #btn-search {
+    background: var(--green-mid);
+    color: white;
+  }
+  #btn-search:hover:not(:disabled) { background: var(--green-deep); }
+
+  #btn-export {
+    background: var(--green-pale);
+    color: var(--green-deep);
+  }
+  #btn-export:hover:not(:disabled) { background: var(--green-light); color: white; }
+
+  #btn-clear {
+    background: #f5f5f5;
+    color: var(--muted);
+    font-size: 0.78rem;
+    padding: 8px 16px;
+  }
+  #btn-clear:hover:not(:disabled) { background: #ebebeb; }
+
+  /* ── STATS BAR ──────────────────────────── */
+  #stats-bar {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    min-height: 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  #stats-bar .pill {
+    background: var(--green-pale);
+    color: var(--green-deep);
+    border-radius: 99px;
+    padding: 2px 10px;
+    font-weight: 500;
+  }
+  #stats-bar .pill.red { background: #fdd; color: var(--red-text); }
+
+  /* ── TABLE ──────────────────────────────── */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 520px;
+  }
+  table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    font-size: 0.78rem;
+  }
+  thead tr {
+    background: var(--green-deep);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  thead th {
+    padding: 11px 14px;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,0.12);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:hover { background: var(--green-ghost) !important; }
+  tbody tr.not-found { background: var(--red-soft); }
+  tbody tr.sinonimo { background: var(--yellow-soft); }
+  tbody tr.aceito { background: white; }
+  td {
+    padding: 9px 14px;
+    white-space: nowrap;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-right: 1px solid var(--border);
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+  }
+  td:first-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--green-mid); font-weight: 500; }
+  td a { color: var(--green-mid); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+
+  /* ── LEGEND ─────────────────────────────── */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 0.74rem; color: var(--muted);
+    margin-top: 10px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── COPY BUTTON ────────────────────────────── */
+  .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 9px 18px;
+    background: var(--green-deep);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background .18s, transform .1s;
+  }
+  .btn-copy:hover { background: var(--green-mid); }
+  .btn-copy:active { transform: scale(0.97); }
+  .btn-copy.copied { background: #27ae60; }
+
+  /* ── SECTION DIVIDER ─────────────────────────── */
+  .section-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--green-deep);
+    margin: 28px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── LOADING ─────────────────────────────── */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--green-mid);
+  }
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--green-pale);
+    border-top-color: var(--green-mid);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #results-section { display: none; }
+
+  /* tooltip on truncated cells */
+  td[title] { cursor: default; }
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>🌿 Extrator para Tabela Taxonômica + Mostrador de Ignorados</h1>
-    <div class="flex-row">
-        <!-- Painel de entrada -->
-        <div class="input-panel">
-            <label><strong>📄 Cole qualquer texto (relatório, lista, artigo):</strong></label>
-            <textarea id="inputText" placeholder="Ex: 'Foram amostradas: Handroanthus impetiginosus, Cecropia pachystachya var. glabrata, Eucalyptus tereticornis, Myrcia cf. splendens, além de Pinus elliottii e Schinus terebinthifolia.'"></textarea>
-            <div class="btn-group">
-                <button id="extractBtn"><span>🔍</span> Extrair Nomes Científicos</button>
-                <button id="copyTableBtn" class="secondary">📋 Copiar Tabela (TSV)</button>
-                <span class="counter" id="rowCount">0 linhas</span>
-            </div>
-            <div id="warningMessage" class="warning" style="display: none;"></div>
-            <div class="small-note">
-                ✅ Reconhece: gênero + epíteto, qualificadores (cf., aff., ?), infra (var., subsp., f.), "sp.".<br>
-                🔍 Usa lista de +200 gêneros de árvores para validar. Abaixo, veja o que foi adicionado (verde) e todos os trechos ignorados (vermelho).
-            </div>
-        </div>
-        <!-- Painel de saída (tabela + mostrador) -->
-        <div class="output-panel">
-            <div class="table-wrapper" id="tableWrapper">
-                <table id="resultTable">
-                    <thead>
-                        <tr>
-                            <th>genus</th>
-                            <th>specificEpithet</th>
-                            <th>infraspecificEpithet</th>
-                            <th>identificationQualifier</th>
-                            <th>scientificName</th>
-                            <th>vernacularName</th>
-                            <th>taxonRank</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="7" style="text-align:center; padding:40px; color:#7a9f7a;">Nenhum dado extraído ainda.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- MOSTRADOR EM TEMPO REAL -->
-            <div id="analysisPanel" class="analysis-panel" style="display: none;">
-                <div class="analysis-stats">
-                    <span id="totalAnalyzed">0 analisados</span>
-                    <span id="totalAdded" style="color:#b9f5b9;">0 adicionados</span>
-                    <span id="totalIgnored" style="color:#f9b5b5;">0 ignorados</span>
-                </div>
-                <div class="analysis-lists">
-                    <div class="analysis-list">
-                        <h4>✅ Adicionados (verde)</h4>
-                        <div id="addedList"></div>
-                    </div>
-                    <div class="analysis-list">
-                        <h4>❌ Ignorados (vermelho) – todos os fragmentos não reconhecidos</h4>
-                        <div id="ignoredList"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+<header>
+  <div>
+    <div class="subtitle">REFLORA / GBIF · Flora e Funga do Brasil 2020</div>
+    <div class="logo">Flora<span>Filogenia</span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- STEP 1: FILES -->
+  <div class="card">
+    <div class="card-title">1 · Carregar Arquivos TSV do DwC-A</div>
+    <div class="file-grid">
+      <div class="file-zone" id="zone-taxon">
+        <input type="file" id="file-taxon" accept=".txt,.tsv,.csv"/>
+        <div class="file-icon">🌿</div>
+        <div class="file-label">taxon.txt</div>
+        <div class="file-status" id="status-taxon">Clique ou arraste o arquivo</div>
+      </div>
+      <div class="file-zone" id="zone-vernacular">
+        <input type="file" id="file-vernacular" accept=".txt,.tsv,.csv"/>
+        <div class="file-icon">🗣️</div>
+        <div class="file-label">vernacularNames.txt</div>
+        <div class="file-status" id="status-vernacular">Clique ou arraste o arquivo</div>
+      </div>
     </div>
-</div>
+  </div>
+
+  <!-- STEP 2: SEARCH -->
+  <div class="card">
+    <div class="card-title">2 · Buscar Táxons por Nome Científico ou Popular</div>
+    <div class="search-row">
+      <textarea id="names" placeholder="Cole aqui os nomes, um por linha...&#10;Ex: Euterpe oleracea&#10;açaí&#10;Mimosa pudica&#10;Cattleya labiata"></textarea>
+      <div class="btn-col">
+        <button id="btn-search" disabled onclick="runSearch()">🔍 Buscar Filogenia</button>
+        <button id="btn-export" disabled onclick="exportExcel()">📥 Exportar Excel</button>
+        <button id="btn-clear" onclick="clearResults()">✕ Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading"><span class="spinner"></span>Processando...</div>
+
+  <!-- RESULTS -->
+  <div id="results-section">
+    <div id="stats-bar"></div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrap">
+        <table id="result-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nome Digitado</th>
+              <th>Status Busca</th>
+              <th>Reino</th>
+              <th>Filo</th>
+              <th>Classe</th>
+              <th>Ordem</th>
+              <th>Família</th>
+              <th>Gênero</th>
+              <th>Epíteto Esp.</th>
+              <th>Epíteto Infra.</th>
+              <th>Rank</th>
+              <th>Nome Científico</th>
+              <th>Autoria</th>
+              <th>Status Taxon.</th>
+              <th>Status Nomencl.</th>
+              <th>Nome Aceito</th>
+              <th>Publicado Em</th>
+              <th>Ano</th>
+              <th>Classificação Superior</th>
+              <th>Nomes Populares</th>
+              <th>Localidades</th>
+              <th>URL Reflora</th>
+            </tr>
+          </thead>
+          <tbody id="result-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:white;border:1px solid #d8ead1"></div> Nome aceito</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff8e1;border:1px solid #f0d88a"></div> Sinônimo</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff0f0;border:1px solid #f5b8b8"></div> Não encontrado</div>
+    </div>
+    <div style="margin-top:6px;">
+      <button class="btn-copy" id="btn-copy-1" onclick="copyTable(1)">📋 Copiar Tabela 1 para Excel</button>
+    </div>
+  </div>
+
+  <!-- SECOND TABLE -->
+  <div class="section-label">Tabela 2 · Formato DwC Simplificado para Excel</div>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-wrap">
+      <table id="result-table2">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Kingdom</th>
+            <th>Phylum</th>
+            <th>Class</th>
+            <th>Order</th>
+            <th>Family</th>
+            <th>Genus</th>
+            <th>SpecificEpithet</th>
+            <th>InfraspecificEpithet</th>
+            <th>IdentificationQualifier</th>
+            <th>ScientificName</th>
+            <th>VernacularName</th>
+            <th>TaxonRank</th>
+            <th>TaxonRemarks</th>
+          </tr>
+        </thead>
+        <tbody id="result-body2"></tbody>
+      </table>
+    </div>
+  </div>
+  <div style="margin-bottom:28px;">
+    <button class="btn-copy" id="btn-copy-2" onclick="copyTable(2)">📋 Copiar Tabela 2 para Excel</button>
+  </div>
+
+</main>
 
 <script>
-(function() {
-    // ------------------------------------------------------------
-    // Lista de gêneros de árvores/plantas (mais de 200)
-    // ------------------------------------------------------------
-    const genusList = [
-        "Acacia","Acalypha","Acer","Achillea","Acmella","Acrocomia","Actinostemon","Adiantum","Aegiphila","Aeschynomene",
-        "Agave","Alchornea","Allagoptera","Aloe","Aloysia","Alpinia","Alternanthera","Amaranthus","Ambrosia","Amburana",
-        "Anacardium","Anadenanthera","Ananas","Andira","Annona","Anthurium","Apuleia","Araucaria","Archontophoenix","Ardisia",
-        "Aristolochia","Artemisia","Artocarpus","Asclepias","Aspidosperma","Aster","Astrocaryum","Attalea","Averrhoa","Axonopus",
-        "Baccharis","Bactris","Banisteriopsis","Bauhinia","Begonia","Bertholletia","Bidens","Bixa","Blechnum","Borreria",
-        "Bowdichia","Brosimum","Brugmansia","Brunfelsia","Bryophyllum","Butia","Buxus","Byrsonima","Caesalpinia","Cajanus",
-        "Calathea","Calliandra","Calophyllum","Calyptranthes","Campomanesia","Canavalia","Canna","Capsicum","Carapa","Carica",
-        "Cariniana","Cassia","Casuarina","Cecropia","Cedrela","Celtis","Cenchrus","Centrosema","Cephaelis","Ceratonia",
-        "Cestrum","Chaetocalyx","Chamaecrista","Chamaedorea","Chenopodium","Chrysophyllum","Cichorium","Cinnamomum","Cissampelos","Cissus",
-        "Citrus","Clidemia","Clitoria","Clusia","Coccoloba","Cocos","Coffea","Colocasia","Combretum","Commelina",
-        "Conocarpus","Conyza","Copernicia","Cordia","Coriandrum","Costus","Couroupita","Coussapoa","Cratylia","Crotalaria",
-        "Croton","Cupania","Cupressus","Cuscuta","Cynodon","Cyperus","Dalbergia","Datura","Davilla","Delonix",
-        "Desmodium","Dichanthelium","Dichondra","Didymopanax","Digitaria","Dioscorea","Diospyros","Dipteryx","Dodonaea","Drimys",
-        "Drymaria","Duranta","Dyckia","Echinochloa","Echinodorus","Elaeis","Eleocharis","Eleusine","Elytrigia","Emilia",
-        "Enterolobium","Epidendrum","Equisetum","Eragrostis","Erechtites","Eremocaulon","Eriobotrya","Eriocaulon","Eryngium","Erythrina",
-        "Erythroxylum","Eucalyptus","Eugenia","Euploca","Eupatorium","Euphorbia","Euterpe","Fevillea","Ficus","Fimbristylis",
-        "Foeniculum","Fragaria","Furcraea","Gaillardia","Galactia","Galinsoga","Garcinia","Gardenia","Geonoma","Gliricidia",
-        "Gomphrena","Gossypium","Gouania","Gracilea","Guadua","Guapira","Guarea","Guazuma","Gurania","Gymnanthes",
-        "Gymnopogon","Habenaria","Handroanthus","Harpalyce","Hedychium","Hedysomum","Heimia","Helianthus","Heliconia","Heliotropium",
-        "Hemerocallis","Heteropterys","Hibiscus","Hieronyma","Himatanthus","Hirtella","Hydrocotyle","Hymenaea","Hyparrhenia","Hypericum",
-        "Hypoxis","Hyptis","Ilex","Impatiens","Imperata","Indigofera","Inga","Ipomoea","Iresine","Iriartea",
-        "Iribachia","Iris","Jacaranda","Jacaratia","Jatropha","Juncus","Juniperus","Justicia","Kalanchoe","Kielmeyera",
-        "Kyllinga","Lactuca","Lafoensia","Laguncularia","Landolphia","Lantana","Laportea","Lathyrus","Leandra","Lecythis",
-        "Lemaireocereus","Lepidium","Leptochloa","Licania","Lippia","Liquidambar","Liriodendron","Litchi","Lithraea","Lobelia",
-        "Lolium","Lonicera","Luffa","Lupinus","Luziola","Lychnophora","Lycopersicon","Lygodium","Macfadyena","Maclura",
-        "Macroptilium","Magnolia","Malachra","Malaxis","Mammea","Mangifera","Manihot","Manilkara","Mansoa","Maranta",
-        "Marcgravia","Mascagnia","Matayba","Matricaria","Mauritia","Maximiliana","Maytenus","Medicago","Melaleuca","Melastoma",
-        "Melia","Melinis","Melissa","Mentha","Mentzelia","Miconia","Microtea","Mikania","Mimosa","Mirabilis",
-        "Momordica","Monotagma","Montrichardia","Morus","Mouriri","Mucuna","Muhlenbergia","Muntingia","Murraya","Musa",
-        "Myrcia","Myrciaria","Myriophyllum","Myrocarpus","Myroxylon","Nectandra","Nelumbo","Neomarica","Nephelium","Nephrolepis",
-        "Nerium","Nesaea","Nicotiana","Nierembergia","Nopalea","Norantea","Nymphaea","Ocimum","Ocotea","Oenocarpus",
-        "Oenothera","Oldenlandia","Olmedia","Olyra","Operculina","Opuntia","Orbignya","Origanum","Ormosia","Oryza",
-        "Osmorhiza","Ouratea","Oxalis","Pachira","Pachystroma","Paepalanthus","Paliocurea","Panicum","Papaver","Parapiptadenia",
-        "Parietaria","Parkinsonia","Paspalum","Passiflora","Paullinia","Pavonia","Pectis","Peltogyne","Pennisetum","Peperomia",
-        "Pereskia","Persea","Petiveria","Petrea","Petunia","Phaseolus","Philodendron","Phlebodium","Phoradendron","Phragmites",
-        "Phyllanthus","Physalis","Phytolacca","Picramnia","Picrosia","Pilea","Pilocarpus","Pimenta","Pinus","Piper",
-        "Piptadenia","Piptocarpha","Pisonia","Pistia","Pithecellobium","Pityrogramma","Plagiogyria","Plantago","Platymiscium","Platypodium",
-        "Plectranthus","Plinia","Pluchea","Plumbago","Plumeria","Poa","Podocarpus","Polygala","Polygonum","Polymnia",
-        "Polypodium","Polystachya","Pomaderris","Poncirus","Pontederia","Populus","Porophyllum","Portulaca","Posoqueria","Potamogeton",
-        "Pouteria","Pradosia","Pratia","Prosopis","Prunus","Pseudobombax","Pseudolmedia","Psidium","Psittacanthus","Psychotria",
-        "Pteridium","Pteris","Pterocarpus","Pterodon","Ptychosperma","Punica","Pyrostegia","Pyrus","Qualea","Quercus",
-        "Racinaea","Randia","Ranunculus","Rapanea","Rauvolfia","Renealmia","Rhamnus","Rhinchorynchus","Rhizophora","Rhododendron",
-        "Rhoeo","Rhus","Rhynchanthera","Rhynchosia","Rhynchospora","Ribes","Richardia","Ricinus","Rivina","Rosa",
-        "Roystonea","Rubus","Rudgea","Rumex","Ruppia","Ruta","Sabal","Sabicea","Saccharum","Sagittaria",
-        "Salix","Salvia","Salvinia","Sambucus","Samolus","Sapindus","Sapium","Sarcostemma","Satureja","Sauravia",
-        "Saururus","Saxicola","Scabiosa","Scaevola","Schinopsis","Schinus","Schizachyrium","Schizolobium","Schwenckia","Scleria",
-        "Scolopia","Scoparia","Scutellaria","Sebastiania","Securidaca","Sedum","Selaginella","Selenicereus","Senna","Serjania",
-        "Sesamum","Sesbania","Sesuvium","Setaria","Sicana","Sida","Sideroxylon","Silene","Silybum","Simarouba",
-        "Sinningia","Siphocampylus","Sisymbrium","Sisyrinchium","Solanum","Solidago","Sonchus","Sopubia","Sorghum","Sparattosperma",
-        "Spartina","Spartium","Spermacoce","Sphaeropteris","Sphenoclea","Spigelia","Spiranthes","Spirodela","Spondias","Sporobolus",
-        "Stachytarpheta","Staelia","Stapelia","Stellaria","Stenandrium","Stenotaphrum","Stevia","Sticherus","Stigmaphyllon","Stillingia",
-        "Stipa","Strychnos","Stryphnodendron","Stylosanthes","Styrax","Swartzia","Swietenia","Syagrus","Symphonia","Symphyopappus",
-        "Symplocos","Synedrella","Syngonium","Synsepalum","Tabebuia","Tabernaemontana","Tachigali","Tagetes","Talauma","Talipariti",
-        "Talisia","Talium","Tamarix","Tanaecium","Tanacetum","Tapirira","Taraxacum","Tectona","Tephrosia","Terminalia",
-        "Tessaria","Tetracera","Tetragastris","Tetrapterys","Teucrium","Thalia","Thelypteris","Theobroma","Thevetia","Thunbergia",
-        "Thymus","Ti","Tibouchina","Tigridia","Tillandsia","Tipuana","Tithonia","Tournefortia","Tradescantia","Tragia",
-        "Tragus","Trebouxia","Trema","Trichilia","Trichocline","Trichomanes","Trichopilia","Tridax","Trifolium","Trigonia",
-        "Triplaris","Tripogandra","Trisetum","Triticum","Triumfetta","Turnera","Tussilago","Typha","Ugni","Ulmus",
-        "Uncaria","Urena","Urochloa","Ursinia","Utricularia","Vaccinium","Valeriana","Vanilla","Vantanea","Varronia",
-        "Vatairea","Vataireopsis","Verbena","Verbesina","Vernicia","Vernonia","Veronica","Viburnum","Vicia","Victoria",
-        "Vigna","Viguiera","Vinca","Viola","Vismia","Vitex","Vitis","Vittaria","Volkameria","Vriesea",
-        "Warszewiczia","Wedelia","Weinmannia","Welfia","Wigandia","Wissadula","Wolffia","Woodwardia","Xanthium","Xanthosoma",
-        "Xylopia","Xyris","Youngia","Yucca","Zantedeschia","Zanthoxylum","Zea","Zebrina","Zephyranthes","Zingiber",
-        "Zinnia","Ziziphus","Zornia","Zoysia","Zygia","Zygophyllum","Aegiphila integrifolia"
-,"Alchornea glandulosa"
-,"Alchornea triplinervia"
-,"Allophylus edulis"
-,"Annona glabra"
-,"Archontophoenix sp."
-,"Calyptranthes sp."
-,"Cecropia glaziovii"
-,"Citrus sp."
-,"Cupania oblongifolia"
-,"Daphnopsis fasciculata"
-,"Eriobotrya japonica"
-,"Eugenia florida"
-,"Euterpe edulis"
-,"Genipa americana"
-,"Guapira opposita"
-,"Hovenia dulcis"
-,"Hyeronima alchorneoides"
-,"Inga marginata"
-,"Inga sessilis"
-,"Miconia cinnamomifolia"
-,"Miconia formosa"
-,"Mimosa bimucronata"
-,"Myrsine coriacea"
-,"Myrsine umbellata"
-,"Nectandra lanceolata"
-,"Nectandra oppositifolia"
-,"Ocotea pulchella"
-,"Pera glabrata"
-,"Pinus sp."
-,"Pleroma raddianum"
-,"Psidium cattleianum"
-,"Psidium guajava"
-,"Schinus terebinthifolia"
-,"Syagrus romanzoffiana"
+// ── STATE ──────────────────────────────────────────────────────────
+let taxonData = [];
+let vernacularData = [];
+let taxonById = new Map();           // id → row
+let scientificIndex = new Map();     // normalizedName → [rows]
+let vernacularIndex = new Map();     // normalizedName → [ids]
+let taxonLoaded = false;
+let vernacularLoaded = false;
+let lastResults = [];
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function normalize(str) {
+  if (!str) return '';
+  return str.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function checkReady() {
+  const ready = taxonLoaded && vernacularLoaded;
+  document.getElementById('btn-search').disabled = !ready;
+}
+
+// ── FILE LOADING ────────────────────────────────────────────────────
+function setupFileInput(inputId, zoneId, statusId, type) {
+  const input = document.getElementById(inputId);
+  const zone  = document.getElementById(zoneId);
+  const status = document.getElementById(statusId);
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    status.textContent = 'Lendo…';
+    status.className = 'file-status';
+    const reader = new FileReader();
+    reader.onload = e => {
+      Papa.parse(e.target.result, {
+        header: true,
+        delimiter: '\t',
+        skipEmptyLines: true,
+        complete: results => {
+          if (type === 'taxon') {
+            taxonData = results.data;
+            buildTaxonIndexes();
+            taxonLoaded = true;
+            zone.classList.add('loaded');
+            status.textContent = `✅ ${taxonData.length.toLocaleString('pt-BR')} linhas carregadas`;
+            status.className = 'file-status ok';
+          } else {
+            vernacularData = results.data;
+            buildVernacularIndex();
+            vernacularLoaded = true;
+            zone.classList.add('loaded');
+            status.textContent = `✅ ${vernacularData.length.toLocaleString('pt-BR')} linhas carregadas`;
+            status.className = 'file-status ok';
+          }
+          checkReady();
+        },
+        error: err => {
+          status.textContent = '❌ Erro ao ler: ' + err.message;
+        }
+      });
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function buildTaxonIndexes() {
+  taxonById.clear();
+  scientificIndex.clear();
+
+  for (const row of taxonData) {
+    const id = row.id || row.taxonID;
+    if (id) taxonById.set(String(id).trim(), row);
+  }
+
+  for (const row of taxonData) {
+    const key = normalize(row.scientificName);
+    if (!key) continue;
+    if (!scientificIndex.has(key)) scientificIndex.set(key, []);
+    scientificIndex.get(key).push(row);
+  }
+}
+
+function buildVernacularIndex() {
+  vernacularIndex.clear();
+  const grouped = new Map(); // id → {names:[], localities:[]}
+  for (const row of vernacularData) {
+    const id = String(row.id || '').trim();
+    if (!id) continue;
+    if (!grouped.has(id)) grouped.set(id, { names: [], localities: [] });
+    const g = grouped.get(id);
+    if (row.vernacularName) g.names.push(row.vernacularName.trim());
+    if (row.locality) g.localities.push(row.locality.trim());
+  }
+  // store grouped per id
+  window._vernacularGrouped = grouped;
+
+  // build search index: vernacularName (normalized) → [ids]
+  for (const row of vernacularData) {
+    const key = normalize(row.vernacularName);
+    const id  = String(row.id || '').trim();
+    if (!key || !id) continue;
+    if (!vernacularIndex.has(key)) vernacularIndex.set(key, new Set());
+    vernacularIndex.get(key).add(id);
+  }
+}
+
+// ── SEARCH ──────────────────────────────────────────────────────────
+function getVernacularInfo(id) {
+  const g = (window._vernacularGrouped || new Map()).get(String(id).trim());
+  if (!g) return { names: '', localities: '' };
+  return {
+    names: [...new Set(g.names)].join(' | '),
+    localities: [...new Set(g.localities.filter(Boolean))].join(' | ')
+  };
+}
+
+function getAcceptedName(row) {
+  const accId = String(row.acceptedNameUsageID || '').trim();
+  const selfId = String(row.id || row.taxonID || '').trim();
+  if (accId && accId !== selfId && accId !== '') {
+    const accRow = taxonById.get(accId);
+    if (accRow) return accRow.scientificName || '';
+  }
+  return row.acceptedNameUsage || '';
+}
+
+function isSynonym(row) {
+  const accId = String(row.acceptedNameUsageID || '').trim();
+  const selfId = String(row.id || row.taxonID || '').trim();
+  return accId && accId !== selfId;
+}
+
+function buildResultRow(row, nameDigitado, statusBusca) {
+  const vern = getVernacularInfo(row.id || row.taxonID);
+  return {
+    nomeDigitado: nameDigitado,
+    statusBusca,
+    kingdom: row.kingdom || '',
+    phylum: row.phylum || '',
+    class: row.class || '',
+    order: row.order || '',
+    family: row.family || '',
+    genus: row.genus || '',
+    specificEpithet: row.specificEpithet || '',
+    infraspecificEpithet: row.infraspecificEpithet || '',
+    taxonRank: row.taxonRank || '',
+    scientificName: row.scientificName || '',
+    scientificNameAuthorship: row.scientificNameAuthorship || '',
+    taxonomicStatus: row.taxonomicStatus || '',
+    nomenclaturalStatus: row.nomenclaturalStatus || '',
+    acceptedNameUsage: getAcceptedName(row),
+    namePublishedIn: row.namePublishedIn || '',
+    namePublishedInYear: row.namePublishedInYear || '',
+    higherClassification: row.higherClassification || '',
+    vernacularNames: vern.names,
+    localities: vern.localities,
+    references: row.references || '',
+    _synonym: isSynonym(row),
+  };
+}
+
+function runSearch() {
+  const raw = document.getElementById('names').value;
+  const names = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!names.length) return;
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results-section').style.display = 'none';
+
+  // defer so spinner renders
+  setTimeout(() => {
+    lastResults = [];
+    let found = 0, notFound = 0;
+
+    for (const name of names) {
+      const norm = normalize(name);
+      let rows = [];
+      let statusBusca = '';
+
+      // 1) try scientific name exact
+      if (scientificIndex.has(norm)) {
+        rows = scientificIndex.get(norm);
+        statusBusca = 'Nome científico';
+      } else {
+        // 2) try partial scientific (starts-with genus)
+        // try vernacular
+        if (vernacularIndex.has(norm)) {
+          const ids = [...vernacularIndex.get(norm)];
+          for (const id of ids) {
+            const r = taxonById.get(id);
+            if (r) rows.push(r);
+          }
+          // deduplicate
+          rows = [...new Map(rows.map(r => [r.id || r.taxonID, r])).values()];
+          statusBusca = 'Nome popular';
+        }
+      }
+
+      if (rows.length === 0) {
+        notFound++;
+        lastResults.push({
+          nomeDigitado: name, statusBusca: 'Não encontrado',
+          kingdom:'',phylum:'',class:'',order:'',family:'',genus:'',
+          specificEpithet:'',infraspecificEpithet:'',taxonRank:'',
+          scientificName:'',scientificNameAuthorship:'',
+          taxonomicStatus:'',nomenclaturalStatus:'',acceptedNameUsage:'',
+          namePublishedIn:'',namePublishedInYear:'',higherClassification:'',
+          vernacularNames:'',localities:'',references:'',_synonym:false,
+        });
+      } else {
+        found += rows.length;
+        for (const row of rows) {
+          lastResults.push(buildResultRow(row, name, statusBusca));
+        }
+      }
+    }
+
+    renderTable(lastResults);
+    renderTable2(lastResults);
+    renderStats(names.length, found, notFound);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('btn-export').disabled = (lastResults.length === 0);
+  }, 30);
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────
+function renderTable(rows) {
+  const tbody = document.getElementById('result-body');
+  tbody.innerHTML = '';
+
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    if (r.statusBusca === 'Não encontrado') tr.className = 'not-found';
+    else if (r._synonym) tr.className = 'sinonimo';
+    else tr.className = 'aceito';
+
+    const cells = [
+      i + 1,
+      r.nomeDigitado,
+      r.statusBusca,
+      r.kingdom,
+      r.phylum,
+      r.class,
+      r.order,
+      r.family,
+      r.genus,
+      r.specificEpithet,
+      r.infraspecificEpithet,
+      r.taxonRank,
+      r.scientificName,
+      r.scientificNameAuthorship,
+      r.taxonomicStatus,
+      r.nomenclaturalStatus,
+      r.acceptedNameUsage,
+      r.namePublishedIn,
+      r.namePublishedInYear,
+      r.higherClassification,
+      r.vernacularNames,
+      r.localities,
+      null, // url handled separately
     ];
-    const genusSet = new Set(genusList);
 
-    // Elementos DOM
-    const inputText = document.getElementById('inputText');
-    const extractBtn = document.getElementById('extractBtn');
-    const copyTableBtn = document.getElementById('copyTableBtn');
-    const tableBody = document.getElementById('tableBody');
-    const rowCountSpan = document.getElementById('rowCount');
-    const warningDiv = document.getElementById('warningMessage');
-
-    const analysisPanel = document.getElementById('analysisPanel');
-    const totalAnalyzedSpan = document.getElementById('totalAnalyzed');
-    const totalAddedSpan = document.getElementById('totalAdded');
-    const totalIgnoredSpan = document.getElementById('totalIgnored');
-    const addedListDiv = document.getElementById('addedList');
-    const ignoredListDiv = document.getElementById('ignoredList');
-
-    let currentRows = [];
-
-    function showWarning(msg, isError = false) {
-        warningDiv.innerText = msg;
-        warningDiv.style.display = 'block';
-        if (isError) warningDiv.style.background = '#f8d7da';
-        else warningDiv.style.background = '#fff3cd';
-        setTimeout(() => { warningDiv.style.display = 'none'; }, 4000);
-    }
-
-    // Parsing de um nome científico
-    function parseScientificName(rawName) {
-        let name = rawName.trim().replace(/\s+/g, ' ');
-        let result = {
-            genus: '',
-            specificEpithet: '',
-            infraspecificEpithet: '',
-            identificationQualifier: '',
-            scientificName: '',
-            vernacularName: '',
-            taxonRank: 'outro'
-        };
-
-        let words = name.split(' ');
-        if (words.length === 0) return result;
-
-        let firstWord = words[0];
-        if (!/^[A-ZÀ-Ú][a-zà-ú]*$/.test(firstWord) && !/^[A-ZÀ-Ú]+$/.test(firstWord)) {
-            return result;
+    cells.forEach((val, idx) => {
+      const td = document.createElement('td');
+      if (idx === cells.length - 1) {
+        if (r.references) {
+          td.innerHTML = `<a href="${esc(r.references)}" target="_blank" title="${esc(r.references)}">🔗 Reflora</a>`;
         }
-        result.genus = firstWord;
-
-        if (words.length === 1) {
-            result.scientificName = result.genus;
-            result.taxonRank = 'gênero';
-            return result;
-        }
-
-        let remaining = words.slice(1);
-        let qualifier = '';
-        let specific = '';
-        let infra = '';
-
-        if (remaining.length > 0 && /^(cf\.|aff\.|\?)$/i.test(remaining[0])) {
-            qualifier = remaining[0];
-            remaining = remaining.slice(1);
-        }
-
-        if (remaining.length > 0) {
-            if (/^sp(p)?\.$/i.test(remaining[0])) {
-                specific = remaining[0];
-                result.scientificName = result.genus + ' ' + specific;
-                result.taxonRank = 'gênero';
-                result.identificationQualifier = qualifier;
-                return result;
-            }
-            if (/^[a-zà-ú]+[a-zà-ú\-]*\.?$/.test(remaining[0])) {
-                specific = remaining[0];
-                remaining = remaining.slice(1);
-            }
-        }
-
-        if (remaining.length >= 2) {
-            if (/^(var\.|subsp\.|f\.|convar\.)$/i.test(remaining[0])) {
-                let infraType = remaining[0];
-                let infraValue = remaining[1];
-                if (/^[a-zà-ú]+[a-zà-ú\-]*$/.test(infraValue)) {
-                    infra = infraType + ' ' + infraValue;
-                    remaining = remaining.slice(2);
-                }
-            }
-        }
-
-        let parts = [result.genus];
-        if (qualifier) parts.push(qualifier);
-        if (specific) parts.push(specific);
-        if (infra) parts.push(infra);
-        result.scientificName = parts.join(' ');
-        result.identificationQualifier = qualifier;
-        result.specificEpithet = specific || '';
-        result.infraspecificEpithet = infra || '';
-
-        if (infra) result.taxonRank = 'infraespécie';
-        else if (specific && specific !== 'sp.' && specific !== 'spp.') result.taxonRank = 'espécie';
-        else if (result.genus) result.taxonRank = 'gênero';
-
-        return result;
-    }
-
-    // Extrair candidatos com posições (para identificar fragmentos ignorados)
-    function extractCandidatesWithPositions(text) {
-        const regex = /\b([A-ZÀ-Ú][a-zà-ú]*(?:\s+(?:cf\.|aff\.|\?))?(?:\s+[a-zà-ú]+(?:[\.\-][a-zà-ú]+)?)(?:\s+(?:var\.|subsp\.|f\.)\s+[a-zà-ú]+)?(?:\s+[a-zà-ú]+\.?)?)\b/g;
-        const matches = [];
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            matches.push({
-                text: match[1].trim(),
-                index: match.index,
-                endIndex: regex.lastIndex
-            });
-        }
-        return matches;
-    }
-
-    // Obter todos os fragmentos ignorados (incluindo textos que não são candidatos)
-    function getIgnoredFragments(text, matches) {
-        if (matches.length === 0) {
-            // Se não há matches, todo o texto é ignorado (mas podemos quebrar em linhas/palavras)
-            return text.split(/\s+/).filter(t => t.trim() !== '');
-        }
-
-        // Ordenar matches por índice
-        matches.sort((a, b) => a.index - b.index);
-        let ignored = [];
-        let lastEnd = 0;
-
-        matches.forEach(m => {
-            // Texto antes do match
-            if (m.index > lastEnd) {
-                let before = text.substring(lastEnd, m.index).trim();
-                if (before) {
-                    // Quebra o trecho em palavras/pontuação (simples)
-                    before.split(/\s+/).forEach(token => {
-                        if (token.trim()) ignored.push(token.trim());
-                    });
-                }
-            }
-            // Atualiza lastEnd
-            lastEnd = m.endIndex;
-        });
-
-        // Depois do último match
-        if (lastEnd < text.length) {
-            let after = text.substring(lastEnd).trim();
-            if (after) {
-                after.split(/\s+/).forEach(token => {
-                    if (token.trim()) ignored.push(token.trim());
-                });
-            }
-        }
-
-        return ignored;
-    }
-
-    // Processar texto e retornar análise completa
-    function analyzeText(text) {
-        const matches = extractCandidatesWithPositions(text);
-        const totalCandidates = matches.length;
-
-        const added = [];
-        const ignoredCandidates = []; // candidatos que não viraram linhas
-        const ignoredFragments = [];  // fragmentos não capturados
-
-        // Processa cada match
-        matches.forEach(m => {
-            const parsed = parseScientificName(m.text);
-            if (!parsed.genus) {
-                ignoredCandidates.push(m.text);
-            } else {
-                if (!genusSet.has(parsed.genus)) {
-                    parsed.vernacularName = '⚠️ gênero não listado';
-                } else {
-                    parsed.vernacularName = '';
-                }
-                // Evitar duplicatas no added
-                const alreadyAdded = added.some(item => item.scientificName === parsed.scientificName);
-                if (!alreadyAdded) {
-                    added.push(parsed);
-                } else {
-                    // Se duplicata, considera como ignorado? Não, apenas não adiciona de novo.
-                }
-            }
-        });
-
-        // Fragmentos ignorados (tudo que não está em nenhum match)
-        const rawIgnored = getIgnoredFragments(text, matches);
-        rawIgnored.forEach(frag => ignoredFragments.push(frag));
-
-        added.sort((a, b) => a.genus.localeCompare(b.genus));
-
-        return {
-            added: added,
-            ignoredCandidates: ignoredCandidates,
-            ignoredFragments: ignoredFragments,
-            totalCandidates: totalCandidates
-        };
-    }
-
-    // Renderizar tabela e mostrador
-    function renderTableAndAnalysis(analysis) {
-        const rows = analysis.added;
-        const ignoredCandidates = analysis.ignoredCandidates;
-        const ignoredFragments = analysis.ignoredFragments;
-        const totalCandidates = analysis.totalCandidates;
-
-        // Tabela
-        if (rows.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#7a9f7a;">Nenhum nome encontrado.</td></tr>';
-            rowCountSpan.innerText = '0 linhas';
-        } else {
-            let html = '';
-            rows.forEach(row => {
-                html += `<tr>
-                    <td>${escapeHtml(row.genus)}</td>
-                    <td>${escapeHtml(row.specificEpithet)}</td>
-                    <td>${escapeHtml(row.infraspecificEpithet)}</td>
-                    <td>${escapeHtml(row.identificationQualifier)}</td>
-                    <td><em>${escapeHtml(row.scientificName)}</em></td>
-                    <td>${escapeHtml(row.vernacularName)}</td>
-                    <td>${escapeHtml(row.taxonRank)}</td>
-                </tr>`;
-            });
-            tableBody.innerHTML = html;
-            rowCountSpan.innerText = rows.length + ' linhas';
-        }
-
-        // Mostrador
-        if (totalCandidates === 0 && ignoredFragments.length === 0) {
-            analysisPanel.style.display = 'none';
-        } else {
-            analysisPanel.style.display = 'block';
-            totalAnalyzedSpan.innerText = totalCandidates + ' candidatos analisados';
-            totalAddedSpan.innerText = rows.length + ' adicionados';
-            totalIgnoredSpan.innerText = (ignoredCandidates.length + ignoredFragments.length) + ' ignorados';
-
-            // Lista de adicionados
-            addedListDiv.innerHTML = '';
-            rows.forEach(r => {
-                const div = document.createElement('div');
-                div.className = 'added-item';
-                div.textContent = r.scientificName;
-                addedListDiv.appendChild(div);
-            });
-
-            // Lista de ignorados: primeiro os candidatos rejeitados, depois os fragmentos
-            ignoredListDiv.innerHTML = '';
-            ignoredCandidates.forEach(name => {
-                const div = document.createElement('div');
-                div.className = 'ignored-item';
-                div.textContent = '[Candidato] ' + name;
-                ignoredListDiv.appendChild(div);
-            });
-            ignoredFragments.forEach(frag => {
-                const div = document.createElement('div');
-                div.className = 'ignored-item';
-                div.textContent = '[Texto] ' + frag;
-                ignoredListDiv.appendChild(div);
-            });
-        }
-    }
-
-    function escapeHtml(unsafe) {
-        if (!unsafe) return '';
-        return unsafe.replace(/[&<>"]/g, function(m) {
-            if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; if(m === '"') return '&quot;';
-            return m;
-        });
-    }
-
-    // Copiar tabela como TSV
-    function copyTableAsTSV() {
-        if (currentRows.length === 0) {
-            showWarning("Nada para copiar.", true);
-            return;
-        }
-        const headers = ['genus','specificEpithet','infraspecificEpithet','identificationQualifier','scientificName','vernacularName','taxonRank'];
-        let tsv = headers.join('\t') + '\n';
-        currentRows.forEach(r => {
-            const row = [
-                r.genus,
-                r.specificEpithet,
-                r.infraspecificEpithet,
-                r.identificationQualifier,
-                r.scientificName,
-                r.vernacularName,
-                r.taxonRank
-            ].map(cell => cell.replace(/\t/g, ' ').replace(/\n/g, ' '));
-            tsv += row.join('\t') + '\n';
-        });
-
-        navigator.clipboard.writeText(tsv).then(() => {
-            showWarning("Tabela copiada para a área de transferência (formato TSV).");
-        }).catch(() => {
-            const textarea = document.createElement('textarea');
-            textarea.value = tsv;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showWarning("Tabela copiada (método alternativo).");
-        });
-    }
-
-    // Eventos
-    extractBtn.addEventListener('click', () => {
-        const text = inputText.value;
-        if (!text.trim()) {
-            showWarning("Cole um texto primeiro.", true);
-            return;
-        }
-        const analysis = analyzeText(text);
-        currentRows = analysis.added;
-        renderTableAndAnalysis(analysis);
+      } else {
+        const str = val !== null && val !== undefined ? String(val) : '';
+        td.textContent = str;
+        if (str.length > 35) td.title = str;
+      }
+      tr.appendChild(td);
     });
 
-    copyTableBtn.addEventListener('click', copyTableAsTSV);
+    tbody.appendChild(tr);
+  });
+}
 
-    // Exemplo inicial
-    inputText.value = "Lista de espécies: Handroanthus impetiginosus (ipê-roxo), Cecropia pachystachya var. glabrata, Eucalyptus tereticornis, Myrcia cf. splendens, Pinus elliottii, Schinus terebinthifolia, além de Araucaria angustifolia e Pteridium arachnoideum. Também foi observada uma Fabaceae indeterminada (Mimosa scabrella) e Myrciaria cf. dubia.";
-    window.addEventListener('load', () => {
-        const analysis = analyzeText(inputText.value);
-        currentRows = analysis.added;
-        renderTableAndAnalysis(analysis);
+function renderStats(total, found, notFound) {
+  const bar = document.getElementById('stats-bar');
+  bar.innerHTML = `
+    <span>Total de nomes buscados: <strong>${total}</strong></span>
+    <span class="pill">✅ ${found} táxon(s) encontrado(s)</span>
+    ${notFound > 0 ? `<span class="pill red">❌ ${notFound} não encontrado(s)</span>` : ''}
+  `;
+}
+
+// ── RENDER TABLE 2 (DwC simplified) ─────────────────────────────────
+function renderTable2(rows) {
+  const tbody = document.getElementById('result-body2');
+  tbody.innerHTML = '';
+
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    if (r.statusBusca === 'Não encontrado') tr.className = 'not-found';
+    else if (r._synonym) tr.className = 'sinonimo';
+    else tr.className = 'aceito';
+
+    // IdentificationQualifier: derive from taxonomicStatus (SINONIMO, NOME_ACEITO etc.)
+    // leave blank for NOME_ACEITO, put "syn." for synonyms, "?" for not found
+    let identQual = '';
+    if (r.statusBusca === 'Não encontrado') identQual = '?';
+    else if (r._synonym) identQual = 'syn.';
+
+    // TaxonRemarks: combine taxonomicStatus + nomenclaturalStatus
+    const remarks = [r.taxonomicStatus, r.nomenclaturalStatus]
+      .filter(Boolean).join(' | ');
+
+    // VernacularName: first name only (before first |)
+    const firstVern = r.vernacularNames ? r.vernacularNames.split(' | ')[0] : '';
+
+    const cells = [
+      i + 1,
+      r.kingdom,
+      r.phylum,
+      r.class,
+      r.order,
+      r.family,
+      r.genus,
+      r.specificEpithet,
+      r.infraspecificEpithet,
+      identQual,
+      r.scientificName,
+      firstVern,
+      r.taxonRank,
+      remarks,
+    ];
+
+    cells.forEach(val => {
+      const td = document.createElement('td');
+      const str = val !== null && val !== undefined ? String(val) : '';
+      td.textContent = str;
+      if (str.length > 35) td.title = str;
+      tr.appendChild(td);
     });
-})();
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ── COPY TO CLIPBOARD (TSV — pastes directly into Excel) ─────────────
+function copyTable(tableNum) {
+  if (!lastResults.length) return;
+
+  let tsv = '';
+
+  if (tableNum === 1) {
+    const headers = [
+      '#','Nome Digitado','Status Busca','Reino','Filo','Classe','Ordem','Família',
+      'Gênero','Epíteto Específico','Epíteto Infraespecífico','Rank',
+      'Nome Científico','Autoria','Status Taxonômico','Status Nomenclatural',
+      'Nome Aceito','Publicado Em','Ano de Publicação','Classificação Superior',
+      'Nomes Populares','Localidades','URL Reflora'
+    ];
+    const dataRows = lastResults.map((r, i) => [
+      i+1, r.nomeDigitado, r.statusBusca, r.kingdom, r.phylum, r.class,
+      r.order, r.family, r.genus, r.specificEpithet, r.infraspecificEpithet,
+      r.taxonRank, r.scientificName, r.scientificNameAuthorship,
+      r.taxonomicStatus, r.nomenclaturalStatus, r.acceptedNameUsage,
+      r.namePublishedIn, r.namePublishedInYear, r.higherClassification,
+      r.vernacularNames, r.localities, r.references
+    ]);
+    tsv = [headers, ...dataRows].map(row =>
+      row.map(cell => String(cell ?? '').replace(/\t/g,' ')).join('\t')
+    ).join('\r\n');
+
+  } else {
+    const headers = [
+      '#','Kingdom','Phylum','Class','Order','Family','Genus',
+      'SpecificEpithet','InfraspecificEpithet','IdentificationQualifier',
+      'ScientificName','VernacularName','TaxonRank','TaxonRemarks'
+    ];
+    const dataRows = lastResults.map((r, i) => {
+      let identQual = '';
+      if (r.statusBusca === 'Não encontrado') identQual = '?';
+      else if (r._synonym) identQual = 'syn.';
+      const remarks = [r.taxonomicStatus, r.nomenclaturalStatus].filter(Boolean).join(' | ');
+      const firstVern = r.vernacularNames ? r.vernacularNames.split(' | ')[0] : '';
+      return [
+        i+1, r.kingdom, r.phylum, r.class, r.order, r.family, r.genus,
+        r.specificEpithet, r.infraspecificEpithet, identQual,
+        r.scientificName, firstVern, r.taxonRank, remarks
+      ];
+    });
+    tsv = [headers, ...dataRows].map(row =>
+      row.map(cell => String(cell ?? '').replace(/\t/g,' ')).join('\t')
+    ).join('\r\n');
+  }
+
+  navigator.clipboard.writeText(tsv).then(() => {
+    const btn = document.getElementById(`btn-copy-${tableNum}`);
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    // fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = tsv;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById(`btn-copy-${tableNum}`);
+    btn.textContent = '✅ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = `📋 Copiar Tabela ${tableNum} para Excel`; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── EXPORT ──────────────────────────────────────────────────────────
+function exportExcel() {
+  if (!lastResults.length) return;
+
+  const headers = [
+    'Nome Digitado','Status Busca','Reino','Filo','Classe','Ordem','Família',
+    'Gênero','Epíteto Específico','Epíteto Infraespecífico','Rank',
+    'Nome Científico','Autoria','Status Taxonômico','Status Nomenclatural',
+    'Nome Aceito','Publicado Em','Ano de Publicação','Classificação Superior',
+    'Nomes Populares','Localidades','URL Reflora'
+  ];
+
+  const data = [headers, ...lastResults.map(r => [
+    r.nomeDigitado, r.statusBusca, r.kingdom, r.phylum, r.class,
+    r.order, r.family, r.genus, r.specificEpithet, r.infraspecificEpithet,
+    r.taxonRank, r.scientificName, r.scientificNameAuthorship,
+    r.taxonomicStatus, r.nomenclaturalStatus, r.acceptedNameUsage,
+    r.namePublishedIn, r.namePublishedInYear, r.higherClassification,
+    r.vernacularNames, r.localities, r.references
+  ])];
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // column widths
+  ws['!cols'] = [
+    {wch:22},{wch:16},{wch:12},{wch:14},{wch:16},{wch:16},{wch:18},
+    {wch:16},{wch:16},{wch:16},{wch:12},{wch:36},{wch:24},{wch:14},
+    {wch:18},{wch:36},{wch:32},{wch:8},{wch:60},{wch:36},{wch:26},{wch:60}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Filogenia');
+  XLSX.writeFile(wb, 'filogenia_flora_brasil.xlsx');
+}
+
+// ── CLEAR ────────────────────────────────────────────────────────────
+function clearResults() {
+  document.getElementById('names').value = '';
+  document.getElementById('result-body').innerHTML = '';
+  document.getElementById('result-body2').innerHTML = '';
+  document.getElementById('stats-bar').innerHTML = '';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('btn-export').disabled = true;
+  lastResults = [];
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+setupFileInput('file-taxon', 'zone-taxon', 'status-taxon', 'taxon');
+setupFileInput('file-vernacular', 'zone-vernacular', 'status-vernacular', 'vernacular');
+
+// allow Enter in textarea to not submit, just newline (default behavior ok)
+// but Ctrl+Enter triggers search
+document.getElementById('names').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') runSearch();
+});
 </script>
 </body>
 </html>
