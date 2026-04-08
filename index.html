@@ -935,14 +935,101 @@ function clearResults() {
   lastResults = [];
 }
 
+// ── LIVE SEARCH ──────────────────────────────────────────────────────
+function runLiveSearch() {
+  if (!taxonLoaded || !vernacularLoaded) return;
+
+  const raw = document.getElementById('names').value;
+  const names = raw.split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (!names.length) {
+    lastResults = [];
+    renderTable([]);
+    renderTable2([]);
+    document.getElementById('stats-bar').innerHTML = '';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('btn-export').disabled = true;
+    return;
+  }
+
+  lastResults = [];
+  let found = 0, notFound = 0;
+
+  for (const name of names) {
+    const norm = normalize(name);
+    let rows = [];
+    let statusBusca = '';
+
+    if (scientificIndex.has(norm)) {
+      rows = scientificIndex.get(norm);
+      statusBusca = 'Nome cientifico';
+    } else if (vernacularIndex.has(norm)) {
+      const ids = [...vernacularIndex.get(norm)];
+      for (const id of ids) {
+        const r = taxonById.get(id);
+        if (r) rows.push(r);
+      }
+      rows = [...new Map(rows.map(r => [r.id || r.taxonID, r])).values()];
+      statusBusca = 'Nome popular';
+    }
+
+    if (rows.length === 0) {
+      notFound++;
+      lastResults.push({
+        nomeDigitado: name, statusBusca: 'Nao encontrado',
+        kingdom:'',phylum:'',class:'',order:'',family:'',genus:'',
+        specificEpithet:'',infraspecificEpithet:'',taxonRank:'',
+        scientificName:'',scientificNameAuthorship:'',
+        taxonomicStatus:'',nomenclaturalStatus:'',acceptedNameUsage:'',
+        namePublishedIn:'',namePublishedInYear:'',higherClassification:'',
+        vernacularNames:'',localities:'',references:'',_synonym:false,
+      });
+    } else {
+      found += rows.length;
+      for (const row of rows) {
+        lastResults.push(buildResultRow(row, name, statusBusca));
+      }
+    }
+  }
+
+  renderTable(lastResults);
+  renderTable2(lastResults);
+  renderStats(names.length, found, notFound);
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('btn-export').disabled = (lastResults.length === 0);
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────
 setupFileInput('file-taxon', 'zone-taxon', 'status-taxon', 'taxon');
 setupFileInput('file-vernacular', 'zone-vernacular', 'status-vernacular', 'vernacular');
 
-// allow Enter in textarea to not submit, just newline (default behavior ok)
-// but Ctrl+Enter triggers search
-document.getElementById('names').addEventListener('keydown', e => {
+const namesTA = document.getElementById('names');
+
+// Ctrl+Enter: busca com loading (comportamento original)
+namesTA.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 'Enter') runSearch();
+});
+
+// Enter: atualiza tabela ao pular linha
+namesTA.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    setTimeout(runLiveSearch, 0);
+  }
+});
+
+// Paste: atualiza e move cursor para o fim
+namesTA.addEventListener('paste', () => {
+  setTimeout(() => {
+    namesTA.selectionStart = namesTA.selectionEnd = namesTA.value.length;
+    runLiveSearch();
+  }, 0);
+});
+
+// Input (delete/backspace/cut/qualquer edicao): atualiza com debounce
+let _liveTimer = null;
+namesTA.addEventListener('input', () => {
+  clearTimeout(_liveTimer);
+  _liveTimer = setTimeout(runLiveSearch, 150);
 });
 </script>
 </body>
